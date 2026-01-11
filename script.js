@@ -32,8 +32,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     38: 'up',     // Up Arrow
                     40: 'down',   // Down Arrow
                     39: 'right',  // Right Arrow
-                    37: 'left'    // Left Arrow
-                }
+                    37: 'left',   // Left Arrow
+                    32: 'pause',  // Spacebar
+                    80: 'pause'   // P key
+                },
+                isPaused: false
             };
 
             this.soundEffects = {
@@ -67,6 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.drawSnake();
                     if (this.food.active) {
                         this.drawFood(this.food.coordinates.x, this.food.coordinates.y);
+                    }
+                    // Redraw pause overlay if game is paused
+                    if (this.game.isPaused) {
+                        this.drawPauseOverlay();
                     }
                 }
             });
@@ -107,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.game.score = 0;
             this.game.direction = 'right';
             this.game.nextDirection = 'right';
+            this.game.isPaused = false;
             
             // Reset canvas size
             this.resetCanvas();
@@ -121,10 +129,14 @@ document.addEventListener('DOMContentLoaded', () => {
             this.$app.classList.add('game-in-progress');
             this.$app.classList.remove('game-over');
             this.$score.innerText = 0;
+            this.game.isPaused = false;
 
             this.generateSnake();
 
             this.startGameInterval = setInterval(() => {
+                // Don't update game if paused
+                if (this.game.isPaused) return;
+                
                 if (!this.detectCollision()) {
                     this.generateSnake();
                 } else {
@@ -134,8 +146,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Change direction
             document.addEventListener('keydown', (event) => {
-                this.changeDirection(event.keyCode);
+                this.handleKeyPress(event.keyCode);
             });
+        }
+
+        handleKeyPress(keyCode) {
+            // Handle pause key (Spacebar or P)
+            if (keyCode === 32 || keyCode === 80) {
+                this.togglePause();
+                return;
+            }
+            
+            // Only process direction keys if game is not paused
+            if (!this.game.isPaused) {
+                this.changeDirection(keyCode);
+            }
+        }
+
+        togglePause() {
+            // Only allow pausing if game is in progress
+            if (!this.$app.classList.contains('game-in-progress')) return;
+            
+            this.game.isPaused = !this.game.isPaused;
+            
+            if (this.game.isPaused) {
+                this.drawPauseOverlay();
+            } else {
+                // Clear pause overlay
+                this.resetCanvas();
+                this.drawSnake();
+                if (this.food.active) {
+                    this.drawFood(this.food.coordinates.x, this.food.coordinates.y);
+                }
+            }
+        }
+
+        drawPauseOverlay() {
+            // Draw semi-transparent overlay
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(0, 0, this.$canvas.width, this.$canvas.height);
+            
+            // Draw pause text
+            this.ctx.fillStyle = '#ff76ff';
+            this.ctx.font = 'bold 60px "Press Start 2P"';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.shadowColor = 'rgba(255, 118, 255, 0.5)';
+            this.ctx.shadowBlur = 20;
+            
+            const centerX = this.$canvas.width / 2;
+            const centerY = this.$canvas.height / 2;
+            
+            this.ctx.fillText('PAUSED', centerX, centerY - 40);
+            
+            // Draw instruction text
+            this.ctx.font = '20px "Press Start 2P"';
+            this.ctx.fillStyle = '#fac020';
+            this.ctx.fillText('Press SPACE or P to resume', centerX, centerY + 40);
+            
+            // Reset shadow
+            this.ctx.shadowBlur = 0;
         }
 
         changeDirection(keyCode) {
@@ -293,6 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         endGame() {
+            // Don't end game if it's paused
+            if (this.game.isPaused) return;
+            
             this.soundEffects.gameOver.play();
 
             clearInterval(this.startGameInterval);
