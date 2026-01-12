@@ -44,6 +44,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameOver: new Audio('https://arcade.arealalien.com/games/snake/sounds/game-over.mp3')
             };
 
+            // Store the keydown handler function so we can remove it later
+            this.handleKeyDownBound = this.handleKeyDown.bind(this);
+            
             this.setUpGame();
             this.init();
         }
@@ -131,6 +134,17 @@ document.addEventListener('DOMContentLoaded', () => {
             this.$score.innerText = 0;
             this.game.isPaused = false;
 
+            // Clear any existing interval
+            if (this.startGameInterval) {
+                clearInterval(this.startGameInterval);
+            }
+
+            // Remove any existing keydown event listener to prevent duplicates
+            document.removeEventListener('keydown', this.handleKeyDownBound);
+            
+            // Add keydown event listener
+            document.addEventListener('keydown', this.handleKeyDownBound);
+
             this.generateSnake();
 
             this.startGameInterval = setInterval(() => {
@@ -143,11 +157,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.endGame();
                 }
             }, this.game.speed);
+        }
 
-            // Change direction
-            document.addEventListener('keydown', (event) => {
-                this.handleKeyPress(event.keyCode);
-            });
+        handleKeyDown(event) {
+            this.handleKeyPress(event.keyCode);
         }
 
         handleKeyPress(keyCode) {
@@ -158,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Only process direction keys if game is not paused
-            if (!this.game.isPaused) {
+            if (!this.game.isPaused && this.$app.classList.contains('game-in-progress')) {
                 this.changeDirection(keyCode);
             }
         }
@@ -344,22 +357,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         detectCollision() {
-            // Self collison
+            // Self collision
             for (let i = 4; i < this.snake.length; i++) {
-                const selfCollison = this.snake[i].x === this.snake[0].x && this.snake[i].y === this.snake[0].y;
+                const selfCollision = this.snake[i].x === this.snake[0].x && this.snake[i].y === this.snake[0].y;
 
-                if (selfCollison) {
+                if (selfCollision) {
                     return true;
                 }
             }
 
-            // Wall collison
-            const leftCollison = this.snake[0].x < 0;
-            const topCollison = this.snake[0].y < 0;
-            const rightCollison = this.snake[0].x > this.$canvas.width - this.settings.snake.size;
-            const bottomCollison = this.snake[0].y > this.$canvas.height - this.settings.snake.size;
+            // Wall collision
+            const leftCollision = this.snake[0].x < 0;
+            const topCollision = this.snake[0].y < 0;
+            const rightCollision = this.snake[0].x > this.$canvas.width - this.settings.snake.size;
+            const bottomCollision = this.snake[0].y > this.$canvas.height - this.settings.snake.size;
 
-            return leftCollison || topCollison || rightCollison || bottomCollison;
+            return leftCollision || topCollision || rightCollision || bottomCollision;
         }
 
         endGame() {
@@ -369,6 +382,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.soundEffects.gameOver.play();
 
             clearInterval(this.startGameInterval);
+            
+            // Remove the keydown event listener when game ends
+            document.removeEventListener('keydown', this.handleKeyDownBound);
 
             this.$app.classList.remove('game-in-progress');
             this.$app.classList.add('game-over');
