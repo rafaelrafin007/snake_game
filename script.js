@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.ctx = this.$canvas.getContext('2d');
             this.$startScreen = this.$app.querySelector('.start-screen');
             this.$score = this.$app.querySelector('.score');
+            this.$activePowerups = this.$app.querySelector('.active-powerups');
 
             this.settings = {
                 canvas: {
@@ -22,31 +23,68 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
+            // Define power-ups with higher probabilities
+            this.powerUps = {
+                speed: {
+                    name: 'Speed Boost',
+                    color: '#00ff00',
+                    duration: 10000,
+                    icon: '⚡',
+                    probability: 0.20,
+                    speedMultiplier: 0.5
+                },
+                slow: {
+                    name: 'Slow Time',
+                    color: '#4169e1',
+                    duration: 10000,
+                    icon: '🐌',
+                    probability: 0.20,
+                    speedMultiplier: 2
+                },
+                invincible: {
+                    name: 'Invincibility',
+                    color: '#ffd700',
+                    duration: 5000,
+                    icon: '🛡️',
+                    probability: 0.15
+                },
+                shrink: {
+                    name: 'Shrink',
+                    color: '#9370db',
+                    duration: 0,
+                    icon: '📉',
+                    probability: 0.15
+                },
+                doublePoints: {
+                    name: 'Double Points',
+                    color: '#ff4500',
+                    duration: 15000,
+                    icon: '2×',
+                    probability: 0.30
+                }
+            };
+
             this.game = {
                 speed: 100,
+                originalSpeed: 100,
                 keyCodes: {
-                    87: 'up',     // W
-                    83: 'down',   // S
-                    68: 'right',  // D
-                    65: 'left',   // A
-                    38: 'up',     // Up Arrow
-                    40: 'down',   // Down Arrow
-                    39: 'right',  // Right Arrow
-                    37: 'left',   // Left Arrow
-                    32: 'pause',  // Spacebar
-                    80: 'pause'   // P key
+                    87: 'up',
+                    83: 'down',
+                    68: 'right',
+                    65: 'left',
+                    38: 'up',
+                    40: 'down',
+                    39: 'right',
+                    37: 'left',
+                    32: 'pause',
+                    80: 'pause'
                 },
-                isPaused: false
+                isPaused: false,
+                scoreMultiplier: 1,
+                invincible: false,
+                activePowerUps: []
             };
 
-            this.soundEffects = {
-                score: new Audio('https://arcade.arealalien.com/games/snake/sounds/score.mp3'),
-                gameOver: new Audio('https://arcade.arealalien.com/games/snake/sounds/game-over.mp3')
-            };
-
-            // Store the keydown handler function so we can remove it later
-            this.handleKeyDownBound = this.handleKeyDown.bind(this);
-            
             this.setUpGame();
             this.init();
         }
@@ -72,11 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.resetCanvas();
                     this.drawSnake();
                     if (this.food.active) {
-                        this.drawFood(this.food.coordinates.x, this.food.coordinates.y);
-                    }
-                    // Redraw pause overlay if game is paused
-                    if (this.game.isPaused) {
-                        this.drawPauseOverlay();
+                        this.drawFood();
                     }
                 }
             });
@@ -86,13 +120,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const difficulty = event.target.dataset.difficulty;
             if (difficulty) {
                 this.game.speed = parseInt(difficulty);
+                this.game.originalSpeed = parseInt(difficulty);
                 this.$startScreen.querySelectorAll('.options button').forEach(btn => btn.classList.remove('active'));
                 event.target.classList.add('active');
             }
         }
 
         setUpGame() {
-            // The snake starts off with 5 pieces
             const x = 300;
             const y = 300;
 
@@ -106,8 +140,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             this.food = {
                 active: false,
-                background: '#f8a2ff',
-                border: '#f8a2ff',
+                type: 'regular',
+                color: '#f8a2ff',
                 coordinates: {
                     x: 0,
                     y: 0
@@ -118,17 +152,23 @@ document.addEventListener('DOMContentLoaded', () => {
             this.game.direction = 'right';
             this.game.nextDirection = 'right';
             this.game.isPaused = false;
+            this.game.scoreMultiplier = 1;
+            this.game.invincible = false;
+            this.game.activePowerUps = [];
             
-            // Reset canvas size
+            this.$activePowerups.innerHTML = '';
             this.resetCanvas();
         }
 
         startGame() {
-            // Stop the game over sound effect if a new game was restarted quickly before it could end
-            this.soundEffects.gameOver.pause();
-            this.soundEffects.gameOver.currentTime = 0;
+            // Reset the start screen text back to "Choose Difficulty"
+            this.$startScreen.querySelector('.options h3').innerText = 'Choose Difficulty';
+            this.$startScreen.querySelector('.options .end-score').innerText = '';
 
-            // Reset a few things from the prior game
+            // FIXED: Remove any inline display style to let CSS handle visibility
+            this.$startScreen.style.display = '';
+            
+            // Set app classes properly
             this.$app.classList.add('game-in-progress');
             this.$app.classList.remove('game-over');
             this.$score.innerText = 0;
@@ -140,16 +180,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Remove any existing keydown event listener to prevent duplicates
-            document.removeEventListener('keydown', this.handleKeyDownBound);
+            document.removeEventListener('keydown', this.handleKeyPress.bind(this));
             
             // Add keydown event listener
-            document.addEventListener('keydown', this.handleKeyDownBound);
+            document.addEventListener('keydown', (event) => {
+                this.handleKeyPress(event.keyCode);
+            });
 
             this.generateSnake();
 
             this.startGameInterval = setInterval(() => {
-                // Don't update game if paused
                 if (this.game.isPaused) return;
+                
+                this.updatePowerUps();
                 
                 if (!this.detectCollision()) {
                     this.generateSnake();
@@ -159,25 +202,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }, this.game.speed);
         }
 
-        handleKeyDown(event) {
-            this.handleKeyPress(event.keyCode);
-        }
-
         handleKeyPress(keyCode) {
-            // Handle pause key (Spacebar or P)
             if (keyCode === 32 || keyCode === 80) {
                 this.togglePause();
                 return;
             }
             
-            // Only process direction keys if game is not paused
-            if (!this.game.isPaused && this.$app.classList.contains('game-in-progress')) {
+            if (!this.game.isPaused) {
                 this.changeDirection(keyCode);
             }
         }
 
         togglePause() {
-            // Only allow pausing if game is in progress
             if (!this.$app.classList.contains('game-in-progress')) return;
             
             this.game.isPaused = !this.game.isPaused;
@@ -185,21 +221,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.game.isPaused) {
                 this.drawPauseOverlay();
             } else {
-                // Clear pause overlay
                 this.resetCanvas();
                 this.drawSnake();
                 if (this.food.active) {
-                    this.drawFood(this.food.coordinates.x, this.food.coordinates.y);
+                    this.drawFood();
                 }
             }
         }
 
         drawPauseOverlay() {
-            // Draw semi-transparent overlay
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             this.ctx.fillRect(0, 0, this.$canvas.width, this.$canvas.height);
             
-            // Draw pause text
             this.ctx.fillStyle = '#ff76ff';
             this.ctx.font = 'bold 60px "Press Start 2P"';
             this.ctx.textAlign = 'center';
@@ -212,12 +245,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             this.ctx.fillText('PAUSED', centerX, centerY - 40);
             
-            // Draw instruction text
             this.ctx.font = '20px "Press Start 2P"';
             this.ctx.fillStyle = '#fac020';
             this.ctx.fillText('Press SPACE or P to resume', centerX, centerY + 40);
             
-            // Reset shadow
             this.ctx.shadowBlur = 0;
         }
 
@@ -229,7 +260,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // When already moving in one direction snake shouldn't be allowed to move in the opposite direction
         validateDirectionChange(keyPress, currentDirection) {
             return (keyPress === 'left' && currentDirection !== 'right') ||
                 (keyPress === 'right' && currentDirection !== 'left') ||
@@ -238,11 +268,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         resetCanvas() {
-            // Full screen size
             this.$canvas.width = this.settings.canvas.width;
             this.$canvas.height = this.settings.canvas.height;
 
-            // Background
             this.ctx.fillStyle = this.settings.canvas.background;
             this.ctx.fillRect(0, 0, this.$canvas.width, this.$canvas.height);
         }
@@ -277,17 +305,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
             }
 
-            // The snake moves by adding a piece to the beginning "this.snake.unshift(coordinate)" and removing the last piece "this.snake.pop()"
             this.snake.unshift(coordinate);
             this.resetCanvas();
 
-            const ateFood = this.snake[0].x === this.food.coordinates.x && this.snake[0].y === this.food.coordinates.y;
+            const head = this.snake[0];
+            const food = this.food.coordinates;
+            
+            const ateFood = head.x === food.x && head.y === food.y;
 
             if (ateFood) {
                 this.food.active = false;
-                this.game.score += 10;
-                this.$score.innerText = this.game.score;
-                this.soundEffects.score.play();
+                
+                if (this.food.type === 'regular') {
+                    const points = 10 * this.game.scoreMultiplier;
+                    this.game.score += points;
+                    this.$score.innerText = this.game.score;
+                    this.playSound('score');
+                } else {
+                    this.applyPowerUp(this.food.type);
+                    this.playSound('powerUp');
+                }
             } else {
                 this.snake.pop();
             }
@@ -296,27 +333,55 @@ document.addEventListener('DOMContentLoaded', () => {
             this.drawSnake();
         }
 
+        playSound(type) {
+            try {
+                let soundUrl;
+                switch(type) {
+                    case 'score':
+                        soundUrl = 'https://arcade.arealalien.com/games/snake/sounds/score.mp3';
+                        break;
+                    case 'powerUp':
+                        soundUrl = 'https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3';
+                        break;
+                    case 'gameOver':
+                        soundUrl = 'https://arcade.arealalien.com/games/snake/sounds/game-over.mp3';
+                        break;
+                }
+                
+                if (soundUrl) {
+                    const audio = new Audio(soundUrl);
+                    audio.volume = 0.3;
+                    audio.play().catch(e => console.log("Audio play failed:", e));
+                }
+            } catch (e) {
+                console.log("Sound error:", e);
+            }
+        }
+
         drawSnake() {
             const size = this.settings.snake.size;
 
-            this.ctx.fillStyle = this.settings.snake.background;
-            this.ctx.shadowColor = 'rgba(250, 192, 32, .45)';
-            this.ctx.shadowBlur = 20;
-
-            // Draw each piece
-            this.snake.forEach(coordinate => {
-                this.ctx.fillRect(coordinate.x, coordinate.y, size, size);
+            if (this.game.invincible) {
+                this.ctx.fillStyle = '#ffd700';
+                this.ctx.shadowColor = 'rgba(255, 215, 0, 0.7)';
+                this.ctx.shadowBlur = 15;
+            } else {
+                this.ctx.fillStyle = this.settings.snake.background;
                 this.ctx.shadowColor = 'rgba(250, 192, 32, .45)';
                 this.ctx.shadowBlur = 20;
+            }
+
+            this.snake.forEach(coordinate => {
+                this.ctx.fillRect(coordinate.x, coordinate.y, size, size);
             });
 
+            this.ctx.shadowBlur = 0;
             this.game.direction = this.game.nextDirection;
         }
 
         generateFood() {
-            // If there is uneaten food on the canvas there's no need to regenerate it
             if (this.food.active) {
-                this.drawFood(this.food.coordinates.x, this.food.coordinates.y);
+                this.drawFood();
                 return;
             }
 
@@ -327,74 +392,235 @@ document.addEventListener('DOMContentLoaded', () => {
             const x = Math.round((Math.random() * xMax) / gridSize) * gridSize;
             const y = Math.round((Math.random() * yMax) / gridSize) * gridSize;
 
-            // Make sure the generated coordinates do not conflict with the snake's present location
             let conflict = false;
-            this.snake.forEach(coordinate => {
-                if (coordinate.x == x && coordinate.y == y) {
+            for (const segment of this.snake) {
+                if (segment.x === x && segment.y === y) {
                     conflict = true;
+                    break;
                 }
-            });
+            }
 
             if (conflict) {
                 this.generateFood();
+                return;
+            }
+
+            // 40% chance for power-up
+            const rand = Math.random();
+            let foodType = 'regular';
+            let foodColor = '#f8a2ff';
+
+            if (rand < 0.4) {
+                const powerUpRand = Math.random();
+                let cumulative = 0;
+                
+                for (const [type, powerUp] of Object.entries(this.powerUps)) {
+                    cumulative += powerUp.probability;
+                    
+                    if (powerUpRand <= cumulative) {
+                        foodType = type;
+                        foodColor = powerUp.color;
+                        break;
+                    }
+                }
+            }
+
+            this.food.active = true;
+            this.food.type = foodType;
+            this.food.color = foodColor;
+            this.food.coordinates.x = x;
+            this.food.coordinates.y = y;
+
+            this.drawFood();
+        }
+
+        drawFood() {
+            const size = this.settings.snake.size;
+            const x = this.food.coordinates.x;
+            const y = this.food.coordinates.y;
+            
+            if (this.food.type !== 'regular') {
+                this.ctx.shadowColor = this.food.color + '80';
+                this.ctx.shadowBlur = 15;
             } else {
-                this.drawFood(x, y);
+                this.ctx.shadowColor = 'rgba(248, 162, 255, .35)';
+                this.ctx.shadowBlur = 20;
+            }
+            
+            this.ctx.fillStyle = this.food.color;
+            
+            if (this.food.type !== 'regular') {
+                // Draw power-up as a diamond shape
+                this.ctx.beginPath();
+                this.ctx.moveTo(x + size/2, y);
+                this.ctx.lineTo(x + size, y + size/2);
+                this.ctx.lineTo(x + size/2, y + size);
+                this.ctx.lineTo(x, y + size/2);
+                this.ctx.closePath();
+                this.ctx.fill();
+            } else {
+                this.ctx.fillRect(x, y, size, size);
+            }
+            
+            this.ctx.shadowBlur = 0;
+        }
+
+        applyPowerUp(type) {
+            const powerUp = this.powerUps[type];
+            if (!powerUp) return;
+            
+            const points = 20 * this.game.scoreMultiplier;
+            this.game.score += points;
+            this.$score.innerText = this.game.score;
+            
+            switch (type) {
+                case 'speed':
+                    this.game.speed = Math.max(20, Math.floor(this.game.originalSpeed * powerUp.speedMultiplier));
+                    this.restartGameInterval();
+                    break;
+                case 'slow':
+                    this.game.speed = Math.floor(this.game.originalSpeed * powerUp.speedMultiplier);
+                    this.restartGameInterval();
+                    break;
+                case 'invincible':
+                    this.game.invincible = true;
+                    break;
+                case 'shrink':
+                    const removeCount = Math.min(3, this.snake.length - 3);
+                    for (let i = 0; i < removeCount; i++) {
+                        this.snake.pop();
+                    }
+                    break;
+                case 'doublePoints':
+                    this.game.scoreMultiplier = 2;
+                    break;
+            }
+            
+            if (powerUp.duration > 0) {
+                const powerUpObj = {
+                    type: type,
+                    endTime: Date.now() + powerUp.duration,
+                    element: this.createPowerUpIndicator(type)
+                };
+                
+                this.game.activePowerUps.push(powerUpObj);
+                this.updatePowerUpDisplay();
             }
         }
 
-        drawFood(x, y) {
-            const size = this.settings.snake.size;
+        createPowerUpIndicator(type) {
+            const powerUp = this.powerUps[type];
+            const indicator = document.createElement('div');
+            indicator.className = 'powerup-indicator';
+            indicator.style.borderColor = powerUp.color;
+            
+            const icon = document.createElement('div');
+            icon.className = 'powerup-icon';
+            icon.style.background = powerUp.color;
+            icon.textContent = powerUp.icon;
+            
+            const timer = document.createElement('div');
+            timer.className = 'powerup-timer';
+            timer.textContent = Math.ceil(powerUp.duration / 1000) + 's';
+            
+            indicator.appendChild(icon);
+            indicator.appendChild(timer);
+            
+            return { element: indicator, timer: timer };
+        }
 
-            this.ctx.fillStyle = this.food.background;
-            this.ctx.shadowColor = 'rgba(248, 162, 255, .35)';
-            this.ctx.shadowBlur = 20;
+        updatePowerUpDisplay() {
+            this.$activePowerups.innerHTML = '';
+            this.game.activePowerUps.forEach(powerUp => {
+                this.$activePowerups.appendChild(powerUp.element.element);
+            });
+        }
 
-            this.ctx.fillRect(x, y, size, size);
+        updatePowerUps() {
+            const now = Date.now();
+            
+            for (let i = this.game.activePowerUps.length - 1; i >= 0; i--) {
+                const powerUp = this.game.activePowerUps[i];
+                const timeLeft = powerUp.endTime - now;
+                
+                if (timeLeft <= 0) {
+                    this.removePowerUp(powerUp.type);
+                    this.game.activePowerUps.splice(i, 1);
+                } else {
+                    powerUp.element.timer.textContent = Math.ceil(timeLeft / 1000) + 's';
+                }
+            }
+            
+            this.updatePowerUpDisplay();
+        }
 
-            this.food.active = true;
-            this.food.coordinates.x = x;
-            this.food.coordinates.y = y;
+        removePowerUp(type) {
+            switch (type) {
+                case 'speed':
+                case 'slow':
+                    this.game.speed = this.game.originalSpeed;
+                    this.restartGameInterval();
+                    break;
+                case 'invincible':
+                    this.game.invincible = false;
+                    break;
+                case 'doublePoints':
+                    this.game.scoreMultiplier = 1;
+                    break;
+            }
+        }
+
+        restartGameInterval() {
+            clearInterval(this.startGameInterval);
+            this.startGameInterval = setInterval(() => {
+                if (this.game.isPaused) return;
+                this.updatePowerUps();
+                if (!this.detectCollision()) {
+                    this.generateSnake();
+                } else {
+                    this.endGame();
+                }
+            }, this.game.speed);
         }
 
         detectCollision() {
-            // Self collision
+            if (this.game.invincible) return false;
+            
+            const head = this.snake[0];
             for (let i = 4; i < this.snake.length; i++) {
-                const selfCollision = this.snake[i].x === this.snake[0].x && this.snake[i].y === this.snake[0].y;
-
-                if (selfCollision) {
+                if (this.snake[i].x === head.x && this.snake[i].y === head.y) {
                     return true;
                 }
             }
 
-            // Wall collision
-            const leftCollision = this.snake[0].x < 0;
-            const topCollision = this.snake[0].y < 0;
-            const rightCollision = this.snake[0].x > this.$canvas.width - this.settings.snake.size;
-            const bottomCollision = this.snake[0].y > this.$canvas.height - this.settings.snake.size;
+            const leftCollision = head.x < 0;
+            const topCollision = head.y < 0;
+            const rightCollision = head.x >= this.$canvas.width - this.settings.snake.size;
+            const bottomCollision = head.y >= this.$canvas.height - this.settings.snake.size;
 
             return leftCollision || topCollision || rightCollision || bottomCollision;
         }
 
         endGame() {
-            // Don't end game if it's paused
             if (this.game.isPaused) return;
             
-            this.soundEffects.gameOver.play();
+            this.playSound('gameOver');
 
             clearInterval(this.startGameInterval);
             
-            // Remove the keydown event listener when game ends
-            document.removeEventListener('keydown', this.handleKeyDownBound);
+            document.removeEventListener('keydown', this.handleKeyPress.bind(this));
 
             this.$app.classList.remove('game-in-progress');
             this.$app.classList.add('game-over');
+            
+            // FIXED: Don't set inline display style here
+            // Just update the text, the CSS will handle visibility
             this.$startScreen.querySelector('.options h3').innerText = 'Game Over';
-            this.$startScreen.querySelector('.options .end-score').innerText = `Score: ${this.game.score}`;
+            this.$startScreen.querySelector('.options .end-score').innerText = `Final Score: ${this.game.score}`;
 
             this.setUpGame();
         }
     }
 
-    // Create game instance
     const snakeGame = new SnakeGame();
 });
