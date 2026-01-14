@@ -9,21 +9,23 @@ document.addEventListener('DOMContentLoaded', () => {
             this.$score = this.$app.querySelector('.score');
             this.$activePowerups = this.$app.querySelector('.active-powerups');
 
+            // Bind methods for event listeners
+            this.handleKeyDown = this.handleKeyDown.bind(this);
+            this.handleResize = this.handleResize.bind(this);
+            
             this.settings = {
                 canvas: {
-                    width: window.innerWidth,
-                    height: window.innerHeight,
-                    background: '#09080a',
-                    border: '#000000'
+                    width: Math.min(window.innerWidth * 0.9, 1000),
+                    height: Math.min(window.innerHeight * 0.9, 700),
+                    background: '#1a3a1a'
                 },
                 snake: {
                     size: 20,
-                    background: '#fac020',
-                    border: '#FAB520'
+                    background: '#fac020'
                 }
             };
 
-            // Define power-ups with higher probabilities
+            // Define power-ups
             this.powerUps = {
                 speed: {
                     name: 'Speed Boost',
@@ -82,7 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 isPaused: false,
                 scoreMultiplier: 1,
                 invincible: false,
-                activePowerUps: []
+                activePowerUps: [],
+                keysPressed: {}
             };
 
             this.setUpGame();
@@ -103,17 +106,24 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // Handle window resize
-            window.addEventListener('resize', () => {
-                this.settings.canvas.width = window.innerWidth;
-                this.settings.canvas.height = window.innerHeight;
-                if (this.$app.classList.contains('game-in-progress')) {
-                    this.resetCanvas();
-                    this.drawSnake();
-                    if (this.food.active) {
-                        this.drawFood();
-                    }
+            window.addEventListener('resize', this.handleResize);
+        }
+
+        handleResize() {
+            // Update canvas size on resize
+            this.settings.canvas.width = Math.min(window.innerWidth * 0.9, 1000);
+            this.settings.canvas.height = Math.min(window.innerHeight * 0.9, 700);
+            
+            if (this.$app.classList.contains('game-in-progress')) {
+                this.resetCanvas();
+                this.drawSnake();
+                if (this.food.active) {
+                    this.drawFood();
                 }
-            });
+                if (this.game.isPaused) {
+                    this.drawPauseOverlay();
+                }
+            }
         }
 
         chooseDifficulty(event) {
@@ -127,8 +137,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         setUpGame() {
-            const x = 300;
-            const y = 300;
+            // Calculate starting position based on canvas size
+            const x = Math.floor(this.settings.canvas.width / 2 / this.settings.snake.size) * this.settings.snake.size;
+            const y = Math.floor(this.settings.canvas.height / 2 / this.settings.snake.size) * this.settings.snake.size;
 
             this.snake = [
                 { x: x, y: y },
@@ -155,19 +166,20 @@ document.addEventListener('DOMContentLoaded', () => {
             this.game.scoreMultiplier = 1;
             this.game.invincible = false;
             this.game.activePowerUps = [];
-
+            this.game.keysPressed = {};
+            
             this.$activePowerups.innerHTML = '';
             this.resetCanvas();
         }
 
         startGame() {
-            // Reset the start screen text back to "Choose Difficulty"
+            // Reset the start screen text
             this.$startScreen.querySelector('.options h3').innerText = 'Choose Difficulty';
             this.$startScreen.querySelector('.options .end-score').innerText = '';
 
-            // FIXED: Remove any inline display style to let CSS handle visibility
+            // Remove any inline display style
             this.$startScreen.style.display = '';
-
+            
             // Set app classes properly
             this.$app.classList.add('game-in-progress');
             this.$app.classList.remove('game-over');
@@ -179,13 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 clearInterval(this.startGameInterval);
             }
 
-            // Remove any existing keydown event listener to prevent duplicates
-            document.removeEventListener('keydown', this.handleKeyPress.bind(this));
-
             // Add keydown event listener
-            document.addEventListener('keydown', (event) => {
-                this.handleKeyPress(event.keyCode);
-            });
+            document.addEventListener('keydown', this.handleKeyDown);
 
             this.generateSnake();
 
@@ -202,22 +209,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }, this.game.speed);
         }
 
-        handleKeyPress(keyCode) {
-            if (keyCode === 32 || keyCode === 80) {
+        handleKeyDown(event) {
+            // Handle pause key (Spacebar or P)
+            if (event.keyCode === 32 || event.keyCode === 80) {
+                event.preventDefault(); // Prevent spacebar from scrolling
                 this.togglePause();
                 return;
             }
-
-            if (!this.game.isPaused) {
-                this.changeDirection(keyCode);
+            
+            // Only process direction keys if game is not paused
+            if (!this.game.isPaused && this.$app.classList.contains('game-in-progress')) {
+                this.changeDirection(event.keyCode);
             }
         }
 
         togglePause() {
             if (!this.$app.classList.contains('game-in-progress')) return;
-
+            
             this.game.isPaused = !this.game.isPaused;
-
+            
             if (this.game.isPaused) {
                 this.drawPauseOverlay();
             } else {
@@ -230,26 +240,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         drawPauseOverlay() {
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            this.ctx.fillRect(0, 0, this.$canvas.width, this.$canvas.height);
+            // Create or update pause overlay
+            let $pauseOverlay = this.$app.querySelector('.pause-overlay');
+            if (!$pauseOverlay) {
+                $pauseOverlay = document.createElement('div');
+                $pauseOverlay.className = 'pause-overlay';
+                $pauseOverlay.innerHTML = `
+                    <div class="pause-text">PAUSED</div>
+                    <div class="pause-subtext">Press SPACE or P to resume</div>
+                `;
+                this.$app.appendChild($pauseOverlay);
+            } else {
+                $pauseOverlay.style.display = 'flex';
+            }
+        }
 
-            this.ctx.fillStyle = '#ff76ff';
-            this.ctx.font = 'bold 60px "Press Start 2P"';
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.shadowColor = 'rgba(255, 118, 255, 0.5)';
-            this.ctx.shadowBlur = 20;
-
-            const centerX = this.$canvas.width / 2;
-            const centerY = this.$canvas.height / 2;
-
-            this.ctx.fillText('PAUSED', centerX, centerY - 40);
-
-            this.ctx.font = '20px "Press Start 2P"';
-            this.ctx.fillStyle = '#fac020';
-            this.ctx.fillText('Press SPACE or P to resume', centerX, centerY + 40);
-
-            this.ctx.shadowBlur = 0;
+        removePauseOverlay() {
+            const $pauseOverlay = this.$app.querySelector('.pause-overlay');
+            if ($pauseOverlay) {
+                $pauseOverlay.style.display = 'none';
+            }
         }
 
         changeDirection(keyCode) {
@@ -268,57 +278,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         resetCanvas() {
+            // Set canvas dimensions
             this.$canvas.width = this.settings.canvas.width;
             this.$canvas.height = this.settings.canvas.height;
 
-            // Create forest-themed background gradient
-            const gradient = this.ctx.createLinearGradient(
-                0, 0, this.$canvas.width, this.$canvas.height
-            );
+            // Create forest-themed background
+            const gradient = this.ctx.createLinearGradient(0, 0, this.$canvas.width, this.$canvas.height);
             gradient.addColorStop(0, '#1a3a1a');
             gradient.addColorStop(0.5, '#0f2a0f');
             gradient.addColorStop(1, '#1a3a1a');
-
+            
             this.ctx.fillStyle = gradient;
             this.ctx.fillRect(0, 0, this.$canvas.width, this.$canvas.height);
-
-            // Add subtle forest floor texture
-            this.drawForestFloor();
-        }
-
-        drawForestFloor() {
-            // Draw subtle forest floor pattern (grass/leaves)
-            const gridSize = this.settings.snake.size;
-
-            this.ctx.strokeStyle = 'rgba(74, 124, 74, 0.05)';
-            this.ctx.lineWidth = 0.5;
-
-            // Vertical lines
-            for (let x = 0; x <= this.$canvas.width; x += gridSize) {
-                this.ctx.beginPath();
-                this.ctx.moveTo(x, 0);
-                this.ctx.lineTo(x, this.$canvas.height);
-                this.ctx.stroke();
-            }
-
-            // Horizontal lines
-            for (let y = 0; y <= this.$canvas.height; y += gridSize) {
-                this.ctx.beginPath();
-                this.ctx.moveTo(0, y);
-                this.ctx.lineTo(this.$canvas.width, y);
-                this.ctx.stroke();
-            }
-
-            // Add some random "grass" dots
-            this.ctx.fillStyle = 'rgba(74, 124, 74, 0.1)';
-            for (let i = 0; i < 50; i++) {
-                const x = Math.random() * this.$canvas.width;
-                const y = Math.random() * this.$canvas.height;
-                const size = Math.random() * 2;
-
-                this.ctx.beginPath();
-                this.ctx.arc(x, y, size, 0, Math.PI * 2);
-                this.ctx.fill();
+            
+            // Remove pause overlay if not paused
+            if (!this.game.isPaused) {
+                this.removePauseOverlay();
             }
         }
 
@@ -383,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
         playSound(type) {
             try {
                 let soundUrl;
-                switch (type) {
+                switch(type) {
                     case 'score':
                         soundUrl = 'https://arcade.arealalien.com/games/snake/sounds/score.mp3';
                         break;
@@ -394,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         soundUrl = 'https://arcade.arealalien.com/games/snake/sounds/game-over.mp3';
                         break;
                 }
-
+                
                 if (soundUrl) {
                     const audio = new Audio(soundUrl);
                     audio.volume = 0.3;
@@ -407,185 +382,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         drawSnake() {
             const size = this.settings.snake.size;
-            const headSize = size * 1.1;
 
             if (this.game.invincible) {
                 this.ctx.fillStyle = '#ffd700';
                 this.ctx.shadowColor = 'rgba(255, 215, 0, 0.7)';
                 this.ctx.shadowBlur = 15;
             } else {
-                // Snake color gradient
-                const snakeGradient = this.ctx.createLinearGradient(
-                    0, 0, this.$canvas.width, this.$canvas.height
-                );
-                snakeGradient.addColorStop(0, '#fac020');
-                snakeGradient.addColorStop(1, '#ff9a00');
-                this.ctx.fillStyle = snakeGradient;
+                this.ctx.fillStyle = this.settings.snake.background;
                 this.ctx.shadowColor = 'rgba(250, 192, 32, 0.45)';
                 this.ctx.shadowBlur = 20;
             }
 
-            // Draw snake body with rounded segments
-            for (let i = 0; i < this.snake.length; i++) {
-                const segment = this.snake[i];
-                const isHead = i === 0;
-                const segmentSize = isHead ? headSize : size;
-
-                // Create gradient for each segment
-                const segmentGradient = this.ctx.createRadialGradient(
-                    segment.x + segmentSize / 2, segment.y + segmentSize / 2, 0,
-                    segment.x + segmentSize / 2, segment.y + segmentSize / 2, segmentSize / 2
-                );
-
-                if (isHead) {
-                    // Head gradient (darker)
-                    segmentGradient.addColorStop(0, '#ffcc00');
-                    segmentGradient.addColorStop(0.7, '#ff9900');
-                    segmentGradient.addColorStop(1, '#cc6600');
-                } else {
-                    // Body gradient (lighter towards tail)
-                    const intensity = 1 - (i / this.snake.length) * 0.4;
-                    segmentGradient.addColorStop(0, `rgba(255, 204, 0, ${intensity})`);
-                    segmentGradient.addColorStop(1, `rgba(255, 153, 0, ${intensity})`);
-                }
-
-                this.ctx.fillStyle = segmentGradient;
-
-                // Draw rounded segment
-                this.drawRoundedSegment(segment.x, segment.y, segmentSize, isHead);
-
-                // Draw scales on body (not on head)
-                if (!isHead && i % 2 === 0 && !this.game.invincible) {
-                    this.drawSnakeScales(segment.x, segment.y, segmentSize);
-                }
-            }
-
-            // Draw snake head details
-            if (!this.game.invincible) {
-                this.drawSnakeHead();
-            }
+            this.snake.forEach(coordinate => {
+                this.ctx.fillRect(coordinate.x, coordinate.y, size, size);
+            });
 
             this.ctx.shadowBlur = 0;
             this.game.direction = this.game.nextDirection;
-        }
-
-        drawRoundedSegment(x, y, size, isHead) {
-            this.ctx.beginPath();
-
-            if (isHead) {
-                // Draw head as a more rounded shape
-                const radius = size / 2;
-                this.ctx.roundRect(x, y, size, size, radius * 1.2);
-            } else {
-                // Draw body segments with slight rounding
-                const radius = size / 4;
-                this.ctx.roundRect(x, y, size, size, radius);
-            }
-
-            this.ctx.fill();
-        }
-
-        drawSnakeScales(x, y, size) {
-            const scaleSize = size / 4;
-            const scaleSpacing = scaleSize * 1.5;
-
-            // Draw 3 scales on each segment
-            for (let i = 0; i < 3; i++) {
-                const scaleX = x + (i + 1) * scaleSpacing;
-                const scaleY = y + size / 2;
-
-                this.ctx.fillStyle = 'rgba(255, 221, 102, 0.6)';
-                this.ctx.beginPath();
-                this.ctx.ellipse(scaleX, scaleY, scaleSize / 2, scaleSize / 3, 0, 0, Math.PI * 2);
-                this.ctx.fill();
-            }
-        }
-
-        drawSnakeHead() {
-            const head = this.snake[0];
-            const headSize = this.settings.snake.size * 1.1;
-
-            // Draw eyes
-            this.ctx.fillStyle = 'white';
-
-            // Position eyes based on direction
-            let eye1X, eye1Y, eye2X, eye2Y;
-            const eyeOffset = headSize * 0.2;
-            const eyeSize = headSize * 0.12;
-
-            switch (this.game.direction) {
-                case 'right':
-                    eye1X = head.x + headSize * 0.7;
-                    eye1Y = head.y + headSize * 0.3;
-                    eye2X = head.x + headSize * 0.7;
-                    eye2Y = head.y + headSize * 0.7;
-                    break;
-                case 'left':
-                    eye1X = head.x + headSize * 0.3;
-                    eye1Y = head.y + headSize * 0.3;
-                    eye2X = head.x + headSize * 0.3;
-                    eye2Y = head.y + headSize * 0.7;
-                    break;
-                case 'up':
-                    eye1X = head.x + headSize * 0.3;
-                    eye1Y = head.y + headSize * 0.3;
-                    eye2X = head.x + headSize * 0.7;
-                    eye2Y = head.y + headSize * 0.3;
-                    break;
-                case 'down':
-                    eye1X = head.x + headSize * 0.3;
-                    eye1Y = head.y + headSize * 0.7;
-                    eye2X = head.x + headSize * 0.7;
-                    eye2Y = head.y + headSize * 0.7;
-                    break;
-            }
-
-            // Draw eye whites
-            this.ctx.beginPath();
-            this.ctx.arc(eye1X, eye1Y, eyeSize, 0, Math.PI * 2);
-            this.ctx.fill();
-
-            this.ctx.beginPath();
-            this.ctx.arc(eye2X, eye2Y, eyeSize, 0, Math.PI * 2);
-            this.ctx.fill();
-
-            // Draw pupils
-            this.ctx.fillStyle = '#333';
-            const pupilSize = eyeSize * 0.6;
-
-            this.ctx.beginPath();
-            this.ctx.arc(eye1X, eye1Y, pupilSize, 0, Math.PI * 2);
-            this.ctx.fill();
-
-            this.ctx.beginPath();
-            this.ctx.arc(eye2X, eye2Y, pupilSize, 0, Math.PI * 2);
-            this.ctx.fill();
-
-            // Draw tongue (when moving right/left)
-            if (this.game.direction === 'right' || this.game.direction === 'left') {
-                this.ctx.strokeStyle = '#ff3366';
-                this.ctx.lineWidth = 2;
-                this.ctx.lineCap = 'round';
-
-                const tongueStartX = this.game.direction === 'right'
-                    ? head.x + headSize
-                    : head.x;
-                const tongueStartY = head.y + headSize * 0.5;
-
-                this.ctx.beginPath();
-                this.ctx.moveTo(tongueStartX, tongueStartY);
-
-                const tongueLength = headSize * 0.4;
-                const tongueEndX = this.game.direction === 'right'
-                    ? tongueStartX + tongueLength
-                    : tongueStartX - tongueLength;
-
-                // Draw forked tongue
-                this.ctx.lineTo(tongueEndX, tongueStartY - headSize * 0.1);
-                this.ctx.moveTo(tongueStartX, tongueStartY);
-                this.ctx.lineTo(tongueEndX, tongueStartY + headSize * 0.1);
-                this.ctx.stroke();
-            }
         }
 
         generateFood() {
@@ -659,7 +472,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.ctx.fillStyle = this.food.color;
 
             if (this.food.type !== 'regular') {
-                // Draw power-up as a diamond shape
                 this.ctx.beginPath();
                 this.ctx.moveTo(x + size / 2, y);
                 this.ctx.lineTo(x + size, y + size / 2);
@@ -816,16 +628,21 @@ document.addEventListener('DOMContentLoaded', () => {
             this.playSound('gameOver');
 
             clearInterval(this.startGameInterval);
-
-            document.removeEventListener('keydown', this.handleKeyPress.bind(this));
+            
+            // Remove keydown event listener
+            document.removeEventListener('keydown', this.handleKeyDown);
 
             this.$app.classList.remove('game-in-progress');
             this.$app.classList.add('game-over');
+            
+            // Remove pause overlay if visible
+            this.removePauseOverlay();
 
-            // FIXED: Don't set inline display style here
-            // Just update the text, the CSS will handle visibility
             this.$startScreen.querySelector('.options h3').innerText = 'Game Over';
             this.$startScreen.querySelector('.options .end-score').innerText = `Final Score: ${this.game.score}`;
+            
+            // Make start screen visible
+            this.$startScreen.style.display = 'block';
 
             this.setUpGame();
         }
