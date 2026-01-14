@@ -77,7 +77,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 invincible: false,
                 activePowerUps: [],
                 keysPressed: {},
-                animationFrame: 0
+                animationFrame: 0,
+                // New properties for food system
+                snakeColor: '#fac020', // Default snake color
+                lastPowerUpTime: 0, // When last power-up food was generated
+                powerUpFoodTimer: 0, // Timer for power-up food expiration
+                specialFoodInterval: 25000, // Reduced from 60000 to 25000 (25 seconds)
+                specialFoodDuration: 15000, // Stays for 15 seconds
+                firstSpecialDelay: 5000 // First special food appears after 5 seconds
             };
 
             this.setUpGame();
@@ -156,6 +163,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.food.active) {
                     this.drawFood();
                 }
+                if (this.specialFood.active) {
+                    this.drawSpecialFood();
+                }
                 if (this.game.isPaused) {
                     this.drawPauseOverlay();
                 }
@@ -186,14 +196,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 { x: x - (gridSize * 4), y: y }
             ];
 
+            // Regular food (always present)
             this.food = {
                 active: false,
-                type: 'regular',
                 color: '#f8a2ff',
                 coordinates: {
                     x: 0,
                     y: 0
                 }
+            };
+
+            // Special power-up food (appears periodically)
+            this.specialFood = {
+                active: false,
+                type: null,
+                color: null,
+                coordinates: {
+                    x: 0,
+                    y: 0
+                },
+                spawnTime: 0
             };
 
             this.game.score = 0;
@@ -205,6 +227,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.game.activePowerUps = [];
             this.game.keysPressed = {};
             this.game.animationFrame = 0;
+            this.game.snakeColor = '#fac020'; // Reset to default
+            this.game.lastPowerUpTime = 0;
+            this.game.powerUpFoodTimer = 0;
             
             this.$activePowerups.innerHTML = '';
             this.resetCanvas();
@@ -231,6 +256,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.gameInterval) {
                 clearInterval(this.gameInterval);
             }
+            if (this.powerUpFoodInterval) {
+                clearInterval(this.powerUpFoodInterval);
+            }
 
             // Add keydown event listener
             document.addEventListener('keydown', this.handleKeyDown);
@@ -250,6 +278,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }, this.game.speed);
+            
+            // Start power-up food timer - FIRST one appears after 5 seconds
+            this.game.lastPowerUpTime = Date.now();
+            setTimeout(() => {
+                if (!this.game.isPaused && this.$app.classList.contains('game-in-progress')) {
+                    this.generateSpecialFood();
+                }
+            }, this.game.firstSpecialDelay);
+            
+            // Then every 25 seconds
+            this.powerUpFoodInterval = setInterval(() => {
+                if (!this.game.isPaused && this.$app.classList.contains('game-in-progress')) {
+                    this.generateSpecialFood();
+                }
+            }, this.game.specialFoodInterval);
+            
+            // Generate initial regular food
+            this.generateFood();
         }
 
         update() {
@@ -258,11 +304,22 @@ document.addEventListener('DOMContentLoaded', () => {
             this.lastUpdate = now;
             this.game.animationFrame += delta * 0.05; // For smooth animation
             
+            // Check if special food should expire (15 seconds)
+            if (this.specialFood.active && now - this.specialFood.spawnTime > this.game.specialFoodDuration) {
+                this.specialFood.active = false;
+                this.game.powerUpFoodTimer = 0;
+            } else if (this.specialFood.active) {
+                this.game.powerUpFoodTimer = Math.max(0, Math.ceil((this.game.specialFoodDuration - (now - this.specialFood.spawnTime)) / 1000));
+            }
+            
             if (!this.game.isPaused) {
                 this.resetCanvas();
                 this.drawSnake();
                 if (this.food.active) {
                     this.drawFood();
+                }
+                if (this.specialFood.active) {
+                    this.drawSpecialFood();
                 }
             }
             
@@ -403,22 +460,37 @@ document.addEventListener('DOMContentLoaded', () => {
             this.snake.unshift(coordinate);
 
             const head = this.snake[0];
-            const food = this.food.coordinates;
+            const regularFood = this.food.coordinates;
+            const specialFood = this.specialFood.coordinates;
 
-            const ateFood = head.x === food.x && head.y === food.y;
+            const ateRegularFood = head.x === regularFood.x && head.y === regularFood.y;
+            const ateSpecialFood = this.specialFood.active && head.x === specialFood.x && head.y === specialFood.y;
 
-            if (ateFood) {
+            if (ateRegularFood) {
                 this.food.active = false;
 
-                if (this.food.type === 'regular') {
-                    const points = 10 * this.game.scoreMultiplier;
-                    this.game.score += points;
-                    this.$score.innerText = this.game.score;
-                    this.playSound('score');
-                } else {
-                    this.applyPowerUp(this.food.type);
-                    this.playSound('powerUp');
-                }
+                const points = 10 * this.game.scoreMultiplier;
+                this.game.score += points;
+                this.$score.innerText = this.game.score;
+                this.playSound('score');
+                
+                // Change snake color to regular food color
+                this.game.snakeColor = this.food.color;
+                
+                this.generateFood();
+            } else if (ateSpecialFood) {
+                this.specialFood.active = false;
+                this.game.powerUpFoodTimer = 0;
+
+                const points = 20 * this.game.scoreMultiplier;
+                this.game.score += points;
+                this.$score.innerText = this.game.score;
+                
+                // Change snake color to special food color
+                this.game.snakeColor = this.specialFood.color;
+                
+                this.applyPowerUp(this.specialFood.type);
+                this.playSound('powerUp');
             } else {
                 this.snake.pop();
             }
@@ -435,40 +507,68 @@ document.addEventListener('DOMContentLoaded', () => {
             const size = this.settings.snake.size;
             const animationFrame = this.game.animationFrame;
             
-            // Draw dragon body with animation
-            for (let i = 0; i < this.snake.length; i++) {
-                const segment = this.snake[i];
-                const isHead = i === 0;
-                const isTail = i === this.snake.length - 1;
-                const isBody = !isHead && !isTail;
+            // Parse the snake color
+            let snakePrimaryColor = this.game.snakeColor;
+            let snakeSecondaryColor = this.game.snakeColor;
+            
+            // Calculate darker and lighter versions for gradient
+            const colorMatch = snakePrimaryColor.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+            if (colorMatch) {
+                const r = parseInt(colorMatch[1], 16);
+                const g = parseInt(colorMatch[2], 16);
+                const b = parseInt(colorMatch[3], 16);
                 
-                // Calculate dragon colors (green dragon with gold accents)
-                let primaryColor, secondaryColor, accentColor;
+                // Create darker version for secondary color
+                const darkR = Math.max(0, r - 40);
+                const darkG = Math.max(0, g - 40);
+                const darkB = Math.max(0, b - 40);
+                snakeSecondaryColor = `rgb(${darkR}, ${darkG}, ${darkB})`;
                 
-                if (this.game.invincible) {
-                    // Golden dragon when invincible
-                    const pulse = Math.sin(animationFrame * 0.1) * 0.3 + 0.7;
-                    primaryColor = `rgb(${Math.floor(255 * pulse)}, ${Math.floor(215 * pulse)}, 0)`;
-                    secondaryColor = `rgb(${Math.floor(200 * pulse)}, ${Math.floor(180 * pulse)}, 0)`;
-                    accentColor = `rgb(${Math.floor(255 * pulse)}, ${Math.floor(230 * pulse)}, 100)`;
-                } else {
-                    // Green dragon colors
-                    const t = i / this.snake.length;
-                    const r = Math.floor(34 * (1 - t) + 139 * t);  // Dark green to forest green
-                    const g = Math.floor(139 * (1 - t) + 69 * t);  // Medium green to olive
-                    const b = Math.floor(34 * (1 - t) + 19 * t);   // Dark green to brown
+                // Create lighter version for accent
+                const lightR = Math.min(255, r + 50);
+                const lightG = Math.min(255, g + 50);
+                const lightB = Math.min(255, b + 50);
+                const snakeAccentColor = `rgb(${lightR}, ${lightG}, ${lightB})`;
+                
+                // Draw dragon body with animation
+                for (let i = 0; i < this.snake.length; i++) {
+                    const segment = this.snake[i];
+                    const isHead = i === 0;
+                    const isTail = i === this.snake.length - 1;
                     
-                    primaryColor = `rgb(${r}, ${g}, ${b})`;
-                    secondaryColor = `rgb(${Math.max(0, r - 30)}, ${Math.max(0, g - 30)}, ${Math.max(0, b - 10)})`;
-                    accentColor = `rgb(${Math.min(255, r + 50)}, ${Math.min(255, g + 50)}, ${b})`;
-                }
-                
-                if (isHead) {
-                    this.drawDragonHead(segment.x, segment.y, size, primaryColor, secondaryColor, accentColor);
-                } else if (isTail) {
-                    this.drawDragonTail(segment.x, segment.y, size, primaryColor, secondaryColor);
-                } else {
-                    this.drawDragonBody(segment.x, segment.y, size, i, primaryColor, secondaryColor, animationFrame);
+                    if (this.game.invincible) {
+                        // Golden dragon when invincible
+                        const pulse = Math.sin(animationFrame * 0.1) * 0.3 + 0.7;
+                        const primaryColor = `rgb(${Math.floor(255 * pulse)}, ${Math.floor(215 * pulse)}, 0)`;
+                        const secondaryColor = `rgb(${Math.floor(200 * pulse)}, ${Math.floor(180 * pulse)}, 0)`;
+                        const accentColor = `rgb(${Math.floor(255 * pulse)}, ${Math.floor(230 * pulse)}, 100)`;
+                        
+                        if (isHead) {
+                            this.drawDragonHead(segment.x, segment.y, size, primaryColor, secondaryColor, accentColor);
+                        } else if (isTail) {
+                            this.drawDragonTail(segment.x, segment.y, size, primaryColor, secondaryColor);
+                        } else {
+                            this.drawDragonBody(segment.x, segment.y, size, i, primaryColor, secondaryColor, animationFrame);
+                        }
+                    } else {
+                        // Use snake color with gradient
+                        const t = i / this.snake.length;
+                        const currentR = Math.floor(r * (1 - t) + darkR * t);
+                        const currentG = Math.floor(g * (1 - t) + darkG * t);
+                        const currentB = Math.floor(b * (1 - t) + darkB * t);
+                        
+                        const primaryColor = `rgb(${currentR}, ${currentG}, ${currentB})`;
+                        const secondaryColor = `rgb(${Math.max(0, currentR - 30)}, ${Math.max(0, currentG - 30)}, ${Math.max(0, currentB - 10)})`;
+                        const accentColor = `rgb(${Math.min(255, currentR + 50)}, ${Math.min(255, currentG + 50)}, ${currentB})`;
+                        
+                        if (isHead) {
+                            this.drawDragonHead(segment.x, segment.y, size, primaryColor, secondaryColor, accentColor);
+                        } else if (isTail) {
+                            this.drawDragonTail(segment.x, segment.y, size, primaryColor, secondaryColor);
+                        } else {
+                            this.drawDragonBody(segment.x, segment.y, size, i, primaryColor, secondaryColor, animationFrame);
+                        }
+                    }
                 }
             }
         }
@@ -806,36 +906,80 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            // Check for collision with special food
+            if (this.specialFood.active) {
+                if (this.specialFood.coordinates.x === x && this.specialFood.coordinates.y === y) {
+                    conflict = true;
+                }
+            }
+
             if (conflict) {
                 this.generateFood();
                 return;
             }
 
-            // 40% chance for power-up
-            const rand = Math.random();
-            let foodType = 'regular';
-            let foodColor = '#f8a2ff';
+            this.food.active = true;
+            this.food.color = '#f8a2ff';
+            this.food.coordinates.x = x;
+            this.food.coordinates.y = y;
+        }
 
-            if (rand < 0.4) {
-                const powerUpRand = Math.random();
-                let cumulative = 0;
+        generateSpecialFood() {
+            if (this.specialFood.active) return; // Don't generate if one is already active
+            
+            const gridSize = this.settings.snake.size;
+            const xMax = this.settings.canvas.width - gridSize;
+            const yMax = this.settings.canvas.height - gridSize;
 
-                for (const [type, powerUp] of Object.entries(this.powerUps)) {
-                    cumulative += powerUp.probability;
+            const x = Math.round((Math.random() * xMax) / gridSize) * gridSize;
+            const y = Math.round((Math.random() * yMax) / gridSize) * gridSize;
 
-                    if (powerUpRand <= cumulative) {
-                        foodType = type;
-                        foodColor = powerUp.color;
-                        break;
-                    }
+            // Check for collision with snake
+            let conflict = false;
+            for (const segment of this.snake) {
+                if (segment.x === x && segment.y === y) {
+                    conflict = true;
+                    break;
                 }
             }
 
-            this.food.active = true;
-            this.food.type = foodType;
-            this.food.color = foodColor;
-            this.food.coordinates.x = x;
-            this.food.coordinates.y = y;
+            // Check for collision with regular food
+            if (this.food.active) {
+                if (this.food.coordinates.x === x && this.food.coordinates.y === y) {
+                    conflict = true;
+                }
+            }
+
+            if (conflict) {
+                this.generateSpecialFood();
+                return;
+            }
+
+            // Randomly select a power-up type based on probabilities
+            const powerUpRand = Math.random();
+            let cumulative = 0;
+            let selectedType = null;
+
+            for (const [type, powerUp] of Object.entries(this.powerUps)) {
+                cumulative += powerUp.probability;
+                if (powerUpRand <= cumulative) {
+                    selectedType = type;
+                    break;
+                }
+            }
+
+            if (!selectedType) {
+                selectedType = 'doublePoints'; // Default fallback
+            }
+
+            const powerUp = this.powerUps[selectedType];
+            
+            this.specialFood.active = true;
+            this.specialFood.type = selectedType;
+            this.specialFood.color = powerUp.color;
+            this.specialFood.coordinates.x = x;
+            this.specialFood.coordinates.y = y;
+            this.specialFood.spawnTime = Date.now();
         }
 
         drawFood() {
@@ -847,45 +991,64 @@ document.addEventListener('DOMContentLoaded', () => {
             // Animate food with pulsing effect
             const pulse = Math.sin(animationFrame * 0.2) * 0.2 + 0.8;
 
-            if (this.food.type !== 'regular') {
-                // Draw power-up food as diamond with glow
-                this.ctx.shadowColor = this.food.color + '80';
-                this.ctx.shadowBlur = 15;
-                this.ctx.fillStyle = this.food.color;
-                
-                this.ctx.beginPath();
-                this.ctx.moveTo(x + size/2, y);
-                this.ctx.lineTo(x + size, y + size/2);
-                this.ctx.lineTo(x + size/2, y + size);
-                this.ctx.lineTo(x, y + size/2);
-                this.ctx.closePath();
-                this.ctx.fill();
-                
-                // Add inner shine
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                this.ctx.beginPath();
-                this.ctx.ellipse(x + size/2, y + size/3, size/6 * pulse, size/8 * pulse, 0, 0, Math.PI * 2);
-                this.ctx.fill();
-            } else {
-                // Draw regular food as apple with shine
-                this.ctx.shadowColor = 'rgba(248, 162, 255, .35)';
-                this.ctx.shadowBlur = 20;
-                this.ctx.fillStyle = this.food.color;
-                
-                // Apple body
-                this.ctx.beginPath();
-                this.ctx.ellipse(x + size/2, y + size/2, size/2 * pulse, size/2 * pulse, 0, 0, Math.PI * 2);
-                this.ctx.fill();
-                
-                // Apple shine
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-                this.ctx.beginPath();
-                this.ctx.ellipse(x + size/3, y + size/3, size/6, size/8, Math.PI/4, 0, Math.PI * 2);
-                this.ctx.fill();
-                
-                // Apple stem
-                this.ctx.fillStyle = '#8b4513';
-                this.ctx.fillRect(x + size/2 - 1, y, 2, size/4);
+            // Draw regular food as apple with shine
+            this.ctx.shadowColor = 'rgba(248, 162, 255, .35)';
+            this.ctx.shadowBlur = 20;
+            this.ctx.fillStyle = this.food.color;
+            
+            // Apple body
+            this.ctx.beginPath();
+            this.ctx.ellipse(x + size/2, y + size/2, size/2 * pulse, size/2 * pulse, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Apple shine
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            this.ctx.beginPath();
+            this.ctx.ellipse(x + size/3, y + size/3, size/6, size/8, Math.PI/4, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Apple stem
+            this.ctx.fillStyle = '#8b4513';
+            this.ctx.fillRect(x + size/2 - 1, y, 2, size/4);
+
+            this.ctx.shadowBlur = 0;
+        }
+
+        drawSpecialFood() {
+            const size = this.settings.snake.size;
+            const x = this.specialFood.coordinates.x;
+            const y = this.specialFood.coordinates.y;
+            const animationFrame = this.game.animationFrame;
+
+            // Animate food with pulsing effect
+            const pulse = Math.sin(animationFrame * 0.2) * 0.2 + 0.8;
+
+            // Draw special power-up food as diamond with glow
+            this.ctx.shadowColor = this.specialFood.color + '80';
+            this.ctx.shadowBlur = 15;
+            this.ctx.fillStyle = this.specialFood.color;
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(x + size/2, y);
+            this.ctx.lineTo(x + size, y + size/2);
+            this.ctx.lineTo(x + size/2, y + size);
+            this.ctx.lineTo(x, y + size/2);
+            this.ctx.closePath();
+            this.ctx.fill();
+            
+            // Add inner shine
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            this.ctx.beginPath();
+            this.ctx.ellipse(x + size/2, y + size/3, size/6 * pulse, size/8 * pulse, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Draw timer countdown (15 seconds)
+            if (this.game.powerUpFoodTimer > 0) {
+                this.ctx.fillStyle = '#FFFFFF';
+                this.ctx.font = 'bold 12px "Press Start 2P"';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(this.game.powerUpFoodTimer.toString(), x + size/2, y + 2*size/3);
             }
 
             this.ctx.shadowBlur = 0;
@@ -894,10 +1057,6 @@ document.addEventListener('DOMContentLoaded', () => {
         applyPowerUp(type) {
             const powerUp = this.powerUps[type];
             if (!powerUp) return;
-
-            const points = 20 * this.game.scoreMultiplier;
-            this.game.score += points;
-            this.$score.innerText = this.game.score;
 
             switch (type) {
                 case 'speed':
@@ -1034,6 +1193,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.playSound('gameOver');
 
             clearInterval(this.gameInterval);
+            clearInterval(this.powerUpFoodInterval);
             cancelAnimationFrame(this.gameLoop);
             
             // Remove keydown event listener
