@@ -430,158 +430,338 @@ document.addEventListener('DOMContentLoaded', () => {
             this.game.direction = this.game.nextDirection;
         }
 
+        // DRAGON-STYLE SNAKE DRAWING
         drawSnake() {
             const size = this.settings.snake.size;
             const animationFrame = this.game.animationFrame;
-
-            // Draw snake with animation
+            
+            // Draw dragon body with animation
             for (let i = 0; i < this.snake.length; i++) {
                 const segment = this.snake[i];
                 const isHead = i === 0;
                 const isTail = i === this.snake.length - 1;
+                const isBody = !isHead && !isTail;
                 
-                // Calculate color based on position (gradient effect)
-                let color;
+                // Calculate dragon colors (green dragon with gold accents)
+                let primaryColor, secondaryColor, accentColor;
+                
                 if (this.game.invincible) {
-                    // Golden pulsing effect for invincibility
+                    // Golden dragon when invincible
                     const pulse = Math.sin(animationFrame * 0.1) * 0.3 + 0.7;
-                    color = `rgb(${Math.floor(255 * pulse)}, ${Math.floor(215 * pulse)}, 0)`;
+                    primaryColor = `rgb(${Math.floor(255 * pulse)}, ${Math.floor(215 * pulse)}, 0)`;
+                    secondaryColor = `rgb(${Math.floor(200 * pulse)}, ${Math.floor(180 * pulse)}, 0)`;
+                    accentColor = `rgb(${Math.floor(255 * pulse)}, ${Math.floor(230 * pulse)}, 100)`;
                 } else {
-                    // Normal gradient from head to tail
+                    // Green dragon colors
                     const t = i / this.snake.length;
-                    const r = Math.floor(250 * (1 - t) + 100 * t);
-                    const g = Math.floor(192 * (1 - t) + 100 * t);
-                    const b = Math.floor(32 * (1 - t) + 50 * t);
-                    color = `rgb(${r}, ${g}, ${b})`;
+                    const r = Math.floor(34 * (1 - t) + 139 * t);  // Dark green to forest green
+                    const g = Math.floor(139 * (1 - t) + 69 * t);  // Medium green to olive
+                    const b = Math.floor(34 * (1 - t) + 19 * t);   // Dark green to brown
+                    
+                    primaryColor = `rgb(${r}, ${g}, ${b})`;
+                    secondaryColor = `rgb(${Math.max(0, r - 30)}, ${Math.max(0, g - 30)}, ${Math.max(0, b - 10)})`;
+                    accentColor = `rgb(${Math.min(255, r + 50)}, ${Math.min(255, g + 50)}, ${b})`;
                 }
                 
-                this.ctx.fillStyle = color;
-                
-                // Add subtle wave animation to body segments
-                let waveOffset = 0;
-                if (!isHead && !isTail) {
-                    waveOffset = Math.sin(animationFrame * 0.1 + i * 0.5) * 2;
-                }
-                
-                // Draw rounded segments for better look
-                const x = segment.x + waveOffset;
-                const y = segment.y + waveOffset;
-                const radius = size / 4;
-                
-                // Draw segment with rounded corners
-                this.ctx.beginPath();
-                this.ctx.roundRect(x + radius, y + radius, size - radius * 2, size - radius * 2, radius);
-                this.ctx.fill();
-                
-                // Add highlight for 3D effect
-                if (!isHead) {
-                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-                    this.ctx.beginPath();
-                    this.ctx.ellipse(x + size/2, y + size/4, size/3, size/6, 0, 0, Math.PI * 2);
-                    this.ctx.fill();
-                }
-                
-                // Draw snake head with eyes
                 if (isHead) {
-                    this.drawSnakeHead(segment.x, segment.y, size);
-                }
-                
-                // Draw tail tip
-                if (isTail) {
-                    this.drawSnakeTail(segment.x, segment.y, size);
+                    this.drawDragonHead(segment.x, segment.y, size, primaryColor, secondaryColor, accentColor);
+                } else if (isTail) {
+                    this.drawDragonTail(segment.x, segment.y, size, primaryColor, secondaryColor);
+                } else {
+                    this.drawDragonBody(segment.x, segment.y, size, i, primaryColor, secondaryColor, animationFrame);
                 }
             }
         }
 
-        drawSnakeHead(x, y, size) {
-            // Draw eyes based on direction
-            const eyeSize = size / 5;
-            const eyeOffsetX = size / 3;
-            const eyeOffsetY = size / 3;
+        drawDragonHead(x, y, size, primaryColor, secondaryColor, accentColor) {
+            this.ctx.save();
             
+            // Draw dragon head (larger than body segments)
+            const headSize = size * 1.2;
+            const headX = x - (headSize - size) / 2;
+            const headY = y - (headSize - size) / 2;
+            
+            // Dragon head shape (diamond-like for dragon feel)
+            this.ctx.fillStyle = primaryColor;
+            
+            // Main head shape - diamond
+            this.ctx.beginPath();
+            this.ctx.moveTo(headX + headSize/2, headY);
+            this.ctx.lineTo(headX + headSize, headY + headSize/2);
+            this.ctx.lineTo(headX + headSize/2, headY + headSize);
+            this.ctx.lineTo(headX, headY + headSize/2);
+            this.ctx.closePath();
+            this.ctx.fill();
+            
+            // Add dragon scales on head
+            this.ctx.fillStyle = secondaryColor;
+            for (let i = 0; i < 3; i++) {
+                const scaleX = headX + headSize/2;
+                const scaleY = headY + headSize/3 + (i * headSize/6);
+                const scaleSize = headSize/8;
+                
+                this.ctx.beginPath();
+                this.ctx.ellipse(scaleX, scaleY, scaleSize, scaleSize * 0.7, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+            
+            // Dragon eyes
+            const eyeSize = size / 4;
             this.ctx.fillStyle = '#FFFFFF';
             
             switch(this.game.direction) {
                 case 'right':
-                    this.ctx.fillRect(x + size - eyeOffsetX, y + eyeOffsetY, eyeSize, eyeSize);
-                    this.ctx.fillRect(x + size - eyeOffsetX, y + size - eyeOffsetY - eyeSize, eyeSize, eyeSize);
+                    this.ctx.beginPath();
+                    this.ctx.arc(headX + headSize - eyeSize, headY + headSize/3, eyeSize, 0, Math.PI * 2);
+                    this.ctx.arc(headX + headSize - eyeSize, headY + 2*headSize/3, eyeSize, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Eye pupils
+                    this.ctx.fillStyle = '#000000';
+                    this.ctx.beginPath();
+                    this.ctx.arc(headX + headSize - eyeSize/2, headY + headSize/3, eyeSize/2, 0, Math.PI * 2);
+                    this.ctx.arc(headX + headSize - eyeSize/2, headY + 2*headSize/3, eyeSize/2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Dragon horns
+                    this.ctx.fillStyle = accentColor;
+                    this.ctx.beginPath();
+                    // Top horn
+                    this.ctx.moveTo(headX + headSize/2, headY);
+                    this.ctx.lineTo(headX + headSize/2 - size/3, headY - size/2);
+                    this.ctx.lineTo(headX + headSize/2 + size/3, headY - size/4);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    
+                    // Bottom horn
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(headX + headSize/2, headY + headSize);
+                    this.ctx.lineTo(headX + headSize/2 - size/3, headY + headSize + size/2);
+                    this.ctx.lineTo(headX + headSize/2 + size/3, headY + headSize + size/4);
+                    this.ctx.closePath();
+                    this.ctx.fill();
                     break;
+                    
                 case 'left':
-                    this.ctx.fillRect(x + eyeOffsetX - eyeSize, y + eyeOffsetY, eyeSize, eyeSize);
-                    this.ctx.fillRect(x + eyeOffsetX - eyeSize, y + size - eyeOffsetY - eyeSize, eyeSize, eyeSize);
+                    this.ctx.beginPath();
+                    this.ctx.arc(headX + eyeSize, headY + headSize/3, eyeSize, 0, Math.PI * 2);
+                    this.ctx.arc(headX + eyeSize, headY + 2*headSize/3, eyeSize, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    this.ctx.fillStyle = '#000000';
+                    this.ctx.beginPath();
+                    this.ctx.arc(headX + eyeSize*1.5, headY + headSize/3, eyeSize/2, 0, Math.PI * 2);
+                    this.ctx.arc(headX + eyeSize*1.5, headY + 2*headSize/3, eyeSize/2, 0, Math.PI * 2);
+                    this.ctx.fill();
                     break;
+                    
                 case 'up':
-                    this.ctx.fillRect(x + eyeOffsetX, y + eyeOffsetY - eyeSize, eyeSize, eyeSize);
-                    this.ctx.fillRect(x + size - eyeOffsetX - eyeSize, y + eyeOffsetY - eyeSize, eyeSize, eyeSize);
+                    this.ctx.beginPath();
+                    this.ctx.arc(headX + headSize/3, headY + eyeSize, eyeSize, 0, Math.PI * 2);
+                    this.ctx.arc(headX + 2*headSize/3, headY + eyeSize, eyeSize, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    this.ctx.fillStyle = '#000000';
+                    this.ctx.beginPath();
+                    this.ctx.arc(headX + headSize/3, headY + eyeSize*1.5, eyeSize/2, 0, Math.PI * 2);
+                    this.ctx.arc(headX + 2*headSize/3, headY + eyeSize*1.5, eyeSize/2, 0, Math.PI * 2);
+                    this.ctx.fill();
                     break;
+                    
                 case 'down':
-                    this.ctx.fillRect(x + eyeOffsetX, y + size - eyeOffsetY, eyeSize, eyeSize);
-                    this.ctx.fillRect(x + size - eyeOffsetX - eyeSize, y + size - eyeOffsetY, eyeSize, eyeSize);
+                    this.ctx.beginPath();
+                    this.ctx.arc(headX + headSize/3, headY + headSize - eyeSize, eyeSize, 0, Math.PI * 2);
+                    this.ctx.arc(headX + 2*headSize/3, headY + headSize - eyeSize, eyeSize, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    this.ctx.fillStyle = '#000000';
+                    this.ctx.beginPath();
+                    this.ctx.arc(headX + headSize/3, headY + headSize - eyeSize*1.5, eyeSize/2, 0, Math.PI * 2);
+                    this.ctx.arc(headX + 2*headSize/3, headY + headSize - eyeSize*1.5, eyeSize/2, 0, Math.PI * 2);
+                    this.ctx.fill();
                     break;
             }
             
-            // Draw pupils
-            this.ctx.fillStyle = '#000000';
-            const pupilOffset = eyeSize / 2;
+            // Dragon mouth
+            this.ctx.strokeStyle = '#8B0000';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
             
             switch(this.game.direction) {
                 case 'right':
-                    this.ctx.fillRect(x + size - eyeOffsetX + pupilOffset, y + eyeOffsetY + pupilOffset, eyeSize/2, eyeSize/2);
-                    this.ctx.fillRect(x + size - eyeOffsetX + pupilOffset, y + size - eyeOffsetY - eyeSize + pupilOffset, eyeSize/2, eyeSize/2);
+                    this.ctx.moveTo(headX + headSize, headY + headSize/2);
+                    this.ctx.lineTo(headX + headSize + size/3, headY + headSize/2);
                     break;
                 case 'left':
-                    this.ctx.fillRect(x + eyeOffsetX - eyeSize + pupilOffset, y + eyeOffsetY + pupilOffset, eyeSize/2, eyeSize/2);
-                    this.ctx.fillRect(x + eyeOffsetX - eyeSize + pupilOffset, y + size - eyeOffsetY - eyeSize + pupilOffset, eyeSize/2, eyeSize/2);
+                    this.ctx.moveTo(headX, headY + headSize/2);
+                    this.ctx.lineTo(headX - size/3, headY + headSize/2);
                     break;
                 case 'up':
-                    this.ctx.fillRect(x + eyeOffsetX + pupilOffset, y + eyeOffsetY - eyeSize + pupilOffset, eyeSize/2, eyeSize/2);
-                    this.ctx.fillRect(x + size - eyeOffsetX - eyeSize + pupilOffset, y + eyeOffsetY - eyeSize + pupilOffset, eyeSize/2, eyeSize/2);
+                    this.ctx.moveTo(headX + headSize/2, headY);
+                    this.ctx.lineTo(headX + headSize/2, headY - size/3);
                     break;
                 case 'down':
-                    this.ctx.fillRect(x + eyeOffsetX + pupilOffset, y + size - eyeOffsetY + pupilOffset, eyeSize/2, eyeSize/2);
-                    this.ctx.fillRect(x + size - eyeOffsetX - eyeSize + pupilOffset, y + size - eyeOffsetY + pupilOffset, eyeSize/2, eyeSize/2);
+                    this.ctx.moveTo(headX + headSize/2, headY + headSize);
+                    this.ctx.lineTo(headX + headSize/2, headY + headSize + size/3);
                     break;
             }
+            this.ctx.stroke();
+            
+            this.ctx.restore();
         }
 
-        drawSnakeTail(x, y, size) {
-            // Draw tail tip
-            this.ctx.fillStyle = this.game.invincible ? '#ffd700' : '#8B4513';
+        drawDragonBody(x, y, size, segmentIndex, primaryColor, secondaryColor, animationFrame) {
+            this.ctx.save();
+            
+            // Make body segments wider for dragon look
+            const bodyWidth = size * 1.1;
+            const bodyHeight = size * 0.9;
+            const offsetX = (size - bodyWidth) / 2;
+            const offsetY = (size - bodyHeight) / 2;
+            
+            // Main body segment with rounded corners
+            this.ctx.fillStyle = primaryColor;
+            this.ctx.beginPath();
+            this.ctx.roundRect(x + offsetX, y + offsetY, bodyWidth, bodyHeight, size/4);
+            this.ctx.fill();
+            
+            // Dragon scales pattern
+            this.ctx.fillStyle = secondaryColor;
+            const scaleCount = 3;
+            const scaleSpacing = bodyHeight / (scaleCount + 1);
+            
+            for (let i = 1; i <= scaleCount; i++) {
+                const scaleY = y + offsetY + (i * scaleSpacing);
+                const scaleWidth = bodyWidth * 0.7;
+                const scaleHeight = scaleSpacing * 0.5;
+                const scaleX = x + offsetX + (bodyWidth - scaleWidth) / 2;
+                
+                // Animate scales with slight movement
+                const scaleOffset = Math.sin(animationFrame * 0.1 + segmentIndex * 0.5) * 2;
+                
+                // Draw individual scale
+                this.ctx.beginPath();
+                this.ctx.ellipse(
+                    scaleX + scaleWidth/2 + scaleOffset,
+                    scaleY,
+                    scaleWidth/2,
+                    scaleHeight,
+                    0, 0, Math.PI * 2
+                );
+                this.ctx.fill();
+                
+                // Add scale highlight
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                this.ctx.beginPath();
+                this.ctx.ellipse(
+                    scaleX + scaleWidth/3 + scaleOffset,
+                    scaleY - scaleHeight/4,
+                    scaleWidth/6,
+                    scaleHeight/3,
+                    0, 0, Math.PI * 2
+                );
+                this.ctx.fill();
+                this.ctx.fillStyle = secondaryColor;
+            }
+            
+            // Dragon spine/spikes
+            this.ctx.fillStyle = '#8B4513'; // Brown spikes
+            const spikeCount = 3;
+            const spikeWidth = bodyWidth / 6;
+            const spikeHeight = bodyHeight * 0.4;
+            const spikeSpacing = bodyWidth / (spikeCount + 1);
+            
+            for (let i = 1; i <= spikeCount; i++) {
+                const spikeX = x + offsetX + (i * spikeSpacing);
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(spikeX, y + offsetY - spikeHeight/3);
+                this.ctx.lineTo(spikeX - spikeWidth/2, y + offsetY + spikeHeight/3);
+                this.ctx.lineTo(spikeX + spikeWidth/2, y + offsetY + spikeHeight/3);
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+            
+            this.ctx.restore();
+        }
+
+        drawDragonTail(x, y, size, primaryColor, secondaryColor) {
+            this.ctx.save();
+            
+            // Dragon tail - tapered and spiked
+            const tailWidth = size * 0.8;
+            const tailHeight = size * 0.8;
+            const offsetX = (size - tailWidth) / 2;
+            const offsetY = (size - tailHeight) / 2;
+            
+            // Main tail shape
+            this.ctx.fillStyle = primaryColor;
+            this.ctx.beginPath();
+            
+            switch(this.game.direction) {
+                case 'right':
+                    this.ctx.moveTo(x + offsetX, y + offsetY);
+                    this.ctx.lineTo(x + offsetX + tailWidth, y + offsetY + tailHeight/2);
+                    this.ctx.lineTo(x + offsetX, y + offsetY + tailHeight);
+                    break;
+                case 'left':
+                    this.ctx.moveTo(x + offsetX + tailWidth, y + offsetY);
+                    this.ctx.lineTo(x + offsetX, y + offsetY + tailHeight/2);
+                    this.ctx.lineTo(x + offsetX + tailWidth, y + offsetY + tailHeight);
+                    break;
+                case 'up':
+                    this.ctx.moveTo(x + offsetX, y + offsetY + tailHeight);
+                    this.ctx.lineTo(x + offsetX + tailWidth/2, y + offsetY);
+                    this.ctx.lineTo(x + offsetX + tailWidth, y + offsetY + tailHeight);
+                    break;
+                case 'down':
+                    this.ctx.moveTo(x + offsetX, y + offsetY);
+                    this.ctx.lineTo(x + offsetX + tailWidth/2, y + offsetY + tailHeight);
+                    this.ctx.lineTo(x + offsetX + tailWidth, y + offsetY);
+                    break;
+            }
+            
+            this.ctx.closePath();
+            this.ctx.fill();
+            
+            // Tail tip/spade
+            const tipSize = size / 3;
+            this.ctx.fillStyle = '#8B0000'; // Dark red for tail tip
             
             switch(this.game.direction) {
                 case 'right':
                     this.ctx.beginPath();
-                    this.ctx.moveTo(x, y);
-                    this.ctx.lineTo(x, y + size);
-                    this.ctx.lineTo(x - size/3, y + size/2);
+                    this.ctx.moveTo(x + offsetX + tailWidth, y + offsetY + tailHeight/2);
+                    this.ctx.lineTo(x + offsetX + tailWidth + tipSize, y + offsetY + tailHeight/4);
+                    this.ctx.lineTo(x + offsetX + tailWidth + tipSize, y + offsetY + 3*tailHeight/4);
                     this.ctx.closePath();
-                    this.ctx.fill();
                     break;
                 case 'left':
                     this.ctx.beginPath();
-                    this.ctx.moveTo(x + size, y);
-                    this.ctx.lineTo(x + size, y + size);
-                    this.ctx.lineTo(x + size + size/3, y + size/2);
+                    this.ctx.moveTo(x + offsetX, y + offsetY + tailHeight/2);
+                    this.ctx.lineTo(x + offsetX - tipSize, y + offsetY + tailHeight/4);
+                    this.ctx.lineTo(x + offsetX - tipSize, y + offsetY + 3*tailHeight/4);
                     this.ctx.closePath();
-                    this.ctx.fill();
                     break;
                 case 'up':
                     this.ctx.beginPath();
-                    this.ctx.moveTo(x, y + size);
-                    this.ctx.lineTo(x + size, y + size);
-                    this.ctx.lineTo(x + size/2, y + size + size/3);
+                    this.ctx.moveTo(x + offsetX + tailWidth/2, y + offsetY);
+                    this.ctx.lineTo(x + offsetX + tailWidth/4, y + offsetY - tipSize);
+                    this.ctx.lineTo(x + offsetX + 3*tailWidth/4, y + offsetY - tipSize);
                     this.ctx.closePath();
-                    this.ctx.fill();
                     break;
                 case 'down':
                     this.ctx.beginPath();
-                    this.ctx.moveTo(x, y);
-                    this.ctx.lineTo(x + size, y);
-                    this.ctx.lineTo(x + size/2, y - size/3);
+                    this.ctx.moveTo(x + offsetX + tailWidth/2, y + offsetY + tailHeight);
+                    this.ctx.lineTo(x + offsetX + tailWidth/4, y + offsetY + tailHeight + tipSize);
+                    this.ctx.lineTo(x + offsetX + 3*tailWidth/4, y + offsetY + tailHeight + tipSize);
                     this.ctx.closePath();
-                    this.ctx.fill();
                     break;
             }
+            
+            this.ctx.fill();
+            
+            this.ctx.restore();
         }
 
         playSound(type) {
