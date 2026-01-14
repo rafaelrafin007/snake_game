@@ -1,15 +1,25 @@
 :root {
+  /* Forest Theme Colors */
+  --forest-dark: #0a1a0a;
+  --forest-medium: #1a3a1a;
+  --forest-light: #2a5a2a;
+  --forest-floor: #3a2a1a;
+  --forest-green: #2d5a2d;
+  --tree-brown: #8b4513;
+  --leaf-green: #4a7c4a;
+  --forest-glow: #4aff4a;
+  
   /* Main Colors */
-  --background: #0a090d;
-  --primary: #ff76ff;
+  --background: var(--forest-dark);
+  --primary: #7cfc00; /* Changed to forest green */
   --text-dark: #262629;
   --text-normal: #3e3f43;
   --text-light: #e9eaee;
   /* Other Colors */
-  --red: #ee6b71;
-  --orange: #f78c6a;
-  --yellow: #f2c167;
-  --light-green: #c3e88d;
+  --red: #ff6b6b;
+  --orange: #ffa500;
+  --yellow: #ffd700;
+  --light-green: #90ee90;
   --blue: #89ddf3;
   --blue-muted: #82aaff;
   --blue-muted-darker: #6383c7;
@@ -25,12 +35,57 @@
 }
 html, body {
   margin: 0;
-  color: #ff76ff;
-  background: #0d0912;
+  color: var(--primary);
+  background: linear-gradient(to bottom, #0a1a0a, #0d2910, #0f3315);
   font-family: var(--font-main);
   user-select: none;
   overflow: hidden;
+  position: relative;
+  min-height: 100vh;
 }
+
+/* Forest Background Pattern */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(74, 124, 74, 0.1) 0%, transparent 20%),
+    radial-gradient(circle at 80% 20%, rgba(74, 124, 74, 0.1) 0%, transparent 20%),
+    radial-gradient(circle at 40% 40%, rgba(139, 69, 19, 0.05) 0%, transparent 30%),
+    radial-gradient(circle at 60% 60%, rgba(139, 69, 19, 0.05) 0%, transparent 30%);
+  background-size: 400px 400px;
+  z-index: -2;
+  animation: forestFloat 20s infinite alternate ease-in-out;
+}
+
+@keyframes forestFloat {
+  0% { transform: translateY(0px) translateX(0px); }
+  100% { transform: translateY(10px) translateX(10px); }
+}
+
+/* Forest Leaves Decoration */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%234a7c4a' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+  z-index: -1;
+  animation: leafDrift 30s infinite linear;
+}
+
+@keyframes leafDrift {
+  0% { background-position: 0 0; }
+  100% { background-position: 100px 100px; }
+}
+
 .app {
   height: 100vh;
   display: flex;
@@ -38,7 +93,10 @@ html, body {
   flex-direction: column;
   align-items: center;
   text-align: center;
+  position: relative;
 }
+
+/* Score with forest style */
 .app .score {
   right: 0;
   bottom: 0;
@@ -46,111 +104,169 @@ html, body {
   position: fixed;
   font-size: 65px;
   padding: .5em;
-  color: #fac020;
-  text-shadow: 0 0 10px rgba(250, 192, 32, 0.5);
+  color: #ffd700; /* Gold color for better visibility */
+  text-shadow: 
+    0 0 10px rgba(255, 215, 0, 0.5),
+    0 0 20px rgba(255, 215, 0, 0.3),
+    2px 2px 0 #000;
   z-index: 10;
+  background: rgba(42, 90, 42, 0.8);
+  border: 3px solid #8b4513;
+  border-radius: 10px;
+  margin: 20px;
+  min-width: 200px;
+  text-align: center;
 }
+
+/* Start Screen with Forest Theme */
 .app .start-screen {
   padding: 2em;
   width: 45em;
   min-height: 25em;
   position: absolute;
-  background: #120d18;
-  box-shadow: 0 50px 50px -30px rgba(0, 0, 0, .3);
-  border: 5px solid #0d0a12;
+  background: linear-gradient(145deg, #1a3a1a, #0a2a0a);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.6),
+    0 0 100px rgba(76, 255, 76, 0.2),
+    inset 0 0 30px rgba(139, 69, 19, 0.3);
+  border: 5px solid #8b4513;
   z-index: 1;
-  border-radius: 10px;
+  border-radius: 15px;
+  animation: forestPulse 4s infinite alternate;
 }
+
+@keyframes forestPulse {
+  0% { box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 100px rgba(76, 255, 76, 0.2); }
+  100% { box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 120px rgba(76, 255, 76, 0.4); }
+}
+
 .app .start-screen h1 {
   margin: 0;
-  font-size: 2.5rem;
-  color: #ff76ff;
+  font-size: 2.8rem;
+  background: linear-gradient(to right, #7cfc00, #90ee90, #32cd32);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 20px rgba(124, 252, 0, 0.3);
   margin-bottom: 0.5em;
+  letter-spacing: 2px;
 }
+
 .app .start-screen button {
-  padding: .8em 1em;
-  border: 3px solid #0d0a12;
-  background: none;
+  padding: .8em 1.2em;
+  border: 3px solid #8b4513;
+  background: linear-gradient(to bottom, #2d5a2d, #1a3a1a);
   cursor: pointer;
-  color: inherit;
+  color: #90ee90;
   outline: 0;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
 }
+
 .app .start-screen button:hover,
 .app .start-screen button.active {
-  color: #ff76ff;
-  background: #0d0a12;
+  color: #ffffff;
+  background: linear-gradient(to bottom, #3d6a3d, #2a5a2a);
+  border-color: #ffd700;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+  transform: translateY(-2px);
 }
+
 .app .start-screen .options {
   margin-bottom: 20px;
+  padding: 20px;
+  background: rgba(26, 58, 26, 0.7);
+  border-radius: 10px;
+  border: 2px solid #8b4513;
 }
+
 .app .start-screen .options h3 {
   margin-bottom: 15px;
   font-size: 1.2rem;
-}
-.app .start-screen .play-btn {
-  padding: .8em 1em;
-  font-size: 1.5rem;
-  text-transform: uppercase;
-  background: #ff76ff;
-  color: #0d0a12;
-  border: 3px solid #0d0a12;
-  margin-top: 20px;
-  width: 200px;
-}
-.app .start-screen .play-btn:hover {
-  background: #ff34ff;
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
 
-/* Power-up Guide */
+.app .start-screen .play-btn {
+  padding: 1em 2em;
+  font-size: 1.5rem;
+  text-transform: uppercase;
+  background: linear-gradient(to bottom, #32cd32, #228b22);
+  color: #fff;
+  border: 3px solid #ffd700;
+  margin-top: 20px;
+  width: 250px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s ease;
+  letter-spacing: 1px;
+}
+
+.app .start-screen .play-btn:hover {
+  background: linear-gradient(to bottom, #3cd43c, #32cd32);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+/* Power-up Guide with Forest Theme */
 .power-up-guide {
   margin: 20px 0;
-  padding: 15px;
-  background: rgba(255, 118, 255, 0.05);
-  border: 2px solid rgba(255, 118, 255, 0.2);
-  border-radius: 8px;
+  padding: 20px;
+  background: linear-gradient(145deg, rgba(42, 90, 42, 0.8), rgba(26, 58, 26, 0.8));
+  border: 2px solid #8b4513;
+  border-radius: 10px;
   text-align: left;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
 }
 .power-up-guide h4 {
-  margin: 0 0 10px 0;
-  font-size: 0.9rem;
-  color: #fac020;
+  margin: 0 0 15px 0;
+  font-size: 1rem;
+  color: #ffd700;
   text-align: center;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
 .guide-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 8px 0;
-  font-size: 0.7rem;
+  gap: 12px;
+  margin: 10px 0;
+  font-size: 0.75rem;
   color: #e9eaee;
+  padding: 5px 10px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.2);
 }
 .color-dot {
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
+  box-shadow: 0 0 10px currentColor;
 }
 
-/* Instructions */
+/* Instructions with Forest Theme */
 .instructions {
   margin: 20px 0;
-  padding: 15px;
-  background: rgba(250, 192, 32, 0.05);
-  border: 2px solid rgba(250, 192, 32, 0.2);
-  border-radius: 8px;
+  padding: 20px;
+  background: linear-gradient(145deg, rgba(139, 69, 19, 0.2), rgba(107, 54, 15, 0.2));
+  border: 2px solid #8b4513;
+  border-radius: 10px;
   text-align: left;
 }
 .instructions h4 {
-  margin: 0 0 10px 0;
-  font-size: 0.9rem;
-  color: #fac020;
+  margin: 0 0 15px 0;
+  font-size: 1rem;
+  color: #ffd700;
   text-align: center;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
 .instructions p {
-  margin: 8px 0;
-  font-size: 0.7rem;
+  margin: 10px 0;
+  font-size: 0.75rem;
   color: #e9eaee;
+  padding-left: 10px;
+  border-left: 3px solid #32cd32;
 }
 
 /* Active Power-ups Display */
@@ -166,32 +282,51 @@ html, body {
 .powerup-indicator {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.7);
-  border-radius: 6px;
+  gap: 12px;
+  padding: 10px 15px;
+  background: linear-gradient(145deg, rgba(42, 90, 42, 0.9), rgba(26, 58, 26, 0.9));
+  border-radius: 8px;
   border: 2px solid;
   font-size: 0.8rem;
   color: white;
-  animation: pulse 1.5s infinite;
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  animation: forestPulse 3s infinite alternate;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  min-width: 160px;
 }
 .powerup-icon {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.2);
 }
 .powerup-timer {
-  font-size: 0.7rem;
-  color: white;
-  min-width: 35px;
+  font-size: 0.8rem;
+  color: #ffd700;
+  min-width: 40px;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+}
+
+/* Canvas with Forest Theme */
+canvas {
+  border: 4px solid #8b4513;
+  border-radius: 12px;
+  box-shadow: 
+    0 0 60px rgba(76, 255, 76, 0.3),
+    0 0 120px rgba(76, 255, 76, 0.1),
+    inset 0 0 30px rgba(139, 69, 19, 0.2);
+  background: linear-gradient(145deg, #1a3a1a, #0f2a0f);
+  position: relative;
+  animation: canvasForestGlow 5s infinite alternate;
+}
+
+@keyframes canvasForestGlow {
+  0% { box-shadow: 0 0 60px rgba(76, 255, 76, 0.3), 0 0 120px rgba(76, 255, 76, 0.1); }
+  100% { box-shadow: 0 0 80px rgba(76, 255, 76, 0.4), 0 0 140px rgba(76, 255, 76, 0.2); }
 }
 
 /* Game In Progress */
@@ -207,12 +342,14 @@ html, body {
 
 /* Game Over */
 .app.game-over canvas {
-  opacity: 0.3;
+  opacity: 0.5;
+  filter: sepia(0.5) blur(1px);
 }
 .end-score {
   font-size: 1.5rem;
-  color: #fac020;
+  color: #ffd700;
   margin: 10px 0;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }
 
 /* Snake Appearance Enhancements */
@@ -246,19 +383,14 @@ html, body {
     100% { transform: scale(1); }
 }
 
-/* Smooth transitions for power-ups */
-.active-powerup {
-    transition: all 0.3s ease;
-}
-
 /* Enhanced canvas glow */
 canvas {
     animation: canvasGlow 3s infinite alternate;
 }
 
 @keyframes canvasGlow {
-    from { box-shadow: 0 0 40px rgba(255, 118, 255, 0.3); }
-    to { box-shadow: 0 0 60px rgba(255, 118, 255, 0.5); }
+    from { box-shadow: 0 0 40px rgba(76, 255, 76, 0.3); }
+    to { box-shadow: 0 0 60px rgba(76, 255, 76, 0.5); }
 }
 
 /* Score animation */
@@ -278,9 +410,69 @@ canvas {
     100% { box-shadow: 0 0 15px currentColor; }
 }
 
-/* Segment connection effect */
-.snake-segment-connector {
-    position: absolute;
-    background: linear-gradient(90deg, rgba(255,204,0,0.5), rgba(255,153,0,0.5));
-    border-radius: 50%;
+/* Forest Creatures Decoration (Optional) */
+.forest-decoration {
+  position: fixed;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.decoration-butterfly {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(45deg, #ff6b6b, #ffd700);
+  border-radius: 50%;
+  animation: butterflyFloat 8s infinite ease-in-out;
+  opacity: 0.6;
+}
+
+.decoration-firefly {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #7cfc00;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #7cfc00;
+  animation: fireflyGlow 3s infinite alternate;
+}
+
+@keyframes butterflyFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(50px, 30px) rotate(90deg); }
+  50% { transform: translate(30px, 60px) rotate(180deg); }
+  75% { transform: translate(-20px, 40px) rotate(270deg); }
+}
+
+@keyframes fireflyGlow {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .app .start-screen {
+    width: 90vw;
+    padding: 1.5em;
+  }
+  
+  .app .start-screen h1 {
+    font-size: 2rem;
+  }
+  
+  .app .start-screen .play-btn {
+    width: 200px;
+    font-size: 1.2rem;
+  }
+  
+  .score {
+    font-size: 40px;
+    margin: 10px;
+    padding: 0.3em;
+  }
+  
+  canvas {
+    width: 95vw !important;
+    height: 95vh !important;
+  }
 }
