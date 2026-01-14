@@ -359,25 +359,187 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         drawSnake() {
-            const size = this.settings.snake.size;
+    const size = this.settings.snake.size;
+    const headSize = size * 1.1;
 
-            if (this.game.invincible) {
-                this.ctx.fillStyle = '#ffd700';
-                this.ctx.shadowColor = 'rgba(255, 215, 0, 0.7)';
-                this.ctx.shadowBlur = 15;
-            } else {
-                this.ctx.fillStyle = this.settings.snake.background;
-                this.ctx.shadowColor = 'rgba(250, 192, 32, .45)';
-                this.ctx.shadowBlur = 20;
-            }
+    if (this.game.invincible) {
+        this.ctx.fillStyle = '#ffd700';
+        this.ctx.shadowColor = 'rgba(255, 215, 0, 0.7)';
+        this.ctx.shadowBlur = 15;
+    } else {
+        // Snake color gradient
+        const snakeGradient = this.ctx.createLinearGradient(
+            0, 0, this.$canvas.width, this.$canvas.height
+        );
+        snakeGradient.addColorStop(0, '#fac020');
+        snakeGradient.addColorStop(1, '#ff9a00');
+        this.ctx.fillStyle = snakeGradient;
+        this.ctx.shadowColor = 'rgba(250, 192, 32, 0.45)';
+        this.ctx.shadowBlur = 20;
+    }
 
-            this.snake.forEach(coordinate => {
-                this.ctx.fillRect(coordinate.x, coordinate.y, size, size);
-            });
-
-            this.ctx.shadowBlur = 0;
-            this.game.direction = this.game.nextDirection;
+    // Draw snake body with rounded segments
+    for (let i = 0; i < this.snake.length; i++) {
+        const segment = this.snake[i];
+        const isHead = i === 0;
+        const segmentSize = isHead ? headSize : size;
+        
+        // Create gradient for each segment
+        const segmentGradient = this.ctx.createRadialGradient(
+            segment.x + segmentSize/2, segment.y + segmentSize/2, 0,
+            segment.x + segmentSize/2, segment.y + segmentSize/2, segmentSize/2
+        );
+        
+        if (isHead) {
+            // Head gradient (darker)
+            segmentGradient.addColorStop(0, '#ffcc00');
+            segmentGradient.addColorStop(0.7, '#ff9900');
+            segmentGradient.addColorStop(1, '#cc6600');
+        } else {
+            // Body gradient (lighter towards tail)
+            const intensity = 1 - (i / this.snake.length) * 0.4;
+            segmentGradient.addColorStop(0, `rgba(255, 204, 0, ${intensity})`);
+            segmentGradient.addColorStop(1, `rgba(255, 153, 0, ${intensity})`);
         }
+        
+        this.ctx.fillStyle = segmentGradient;
+        
+        // Draw rounded segment
+        this.drawRoundedSegment(segment.x, segment.y, segmentSize, isHead);
+        
+        // Draw scales on body (not on head)
+        if (!isHead && i % 2 === 0 && !this.game.invincible) {
+            this.drawSnakeScales(segment.x, segment.y, segmentSize);
+        }
+    }
+    
+    // Draw snake head details
+    if (!this.game.invincible) {
+        this.drawSnakeHead();
+    }
+    
+    this.ctx.shadowBlur = 0;
+    this.game.direction = this.game.nextDirection;
+}
+
+drawRoundedSegment(x, y, size, isHead) {
+    this.ctx.beginPath();
+    
+    if (isHead) {
+        // Draw head as a more rounded shape
+        const radius = size / 2;
+        this.ctx.roundRect(x, y, size, size, radius * 1.2);
+    } else {
+        // Draw body segments with slight rounding
+        const radius = size / 4;
+        this.ctx.roundRect(x, y, size, size, radius);
+    }
+    
+    this.ctx.fill();
+}
+
+drawSnakeScales(x, y, size) {
+    const scaleSize = size / 4;
+    const scaleSpacing = scaleSize * 1.5;
+    
+    // Draw 3 scales on each segment
+    for (let i = 0; i < 3; i++) {
+        const scaleX = x + (i + 1) * scaleSpacing;
+        const scaleY = y + size / 2;
+        
+        this.ctx.fillStyle = 'rgba(255, 221, 102, 0.6)';
+        this.ctx.beginPath();
+        this.ctx.ellipse(scaleX, scaleY, scaleSize/2, scaleSize/3, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+    }
+}
+
+drawSnakeHead() {
+    const head = this.snake[0];
+    const headSize = this.settings.snake.size * 1.1;
+    
+    // Draw eyes
+    this.ctx.fillStyle = 'white';
+    
+    // Position eyes based on direction
+    let eye1X, eye1Y, eye2X, eye2Y;
+    const eyeOffset = headSize * 0.2;
+    const eyeSize = headSize * 0.12;
+    
+    switch(this.game.direction) {
+        case 'right':
+            eye1X = head.x + headSize * 0.7;
+            eye1Y = head.y + headSize * 0.3;
+            eye2X = head.x + headSize * 0.7;
+            eye2Y = head.y + headSize * 0.7;
+            break;
+        case 'left':
+            eye1X = head.x + headSize * 0.3;
+            eye1Y = head.y + headSize * 0.3;
+            eye2X = head.x + headSize * 0.3;
+            eye2Y = head.y + headSize * 0.7;
+            break;
+        case 'up':
+            eye1X = head.x + headSize * 0.3;
+            eye1Y = head.y + headSize * 0.3;
+            eye2X = head.x + headSize * 0.7;
+            eye2Y = head.y + headSize * 0.3;
+            break;
+        case 'down':
+            eye1X = head.x + headSize * 0.3;
+            eye1Y = head.y + headSize * 0.7;
+            eye2X = head.x + headSize * 0.7;
+            eye2Y = head.y + headSize * 0.7;
+            break;
+    }
+    
+    // Draw eye whites
+    this.ctx.beginPath();
+    this.ctx.arc(eye1X, eye1Y, eyeSize, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    this.ctx.beginPath();
+    this.ctx.arc(eye2X, eye2Y, eyeSize, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    // Draw pupils
+    this.ctx.fillStyle = '#333';
+    const pupilSize = eyeSize * 0.6;
+    
+    this.ctx.beginPath();
+    this.ctx.arc(eye1X, eye1Y, pupilSize, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    this.ctx.beginPath();
+    this.ctx.arc(eye2X, eye2Y, pupilSize, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    // Draw tongue (when moving right/left)
+    if (this.game.direction === 'right' || this.game.direction === 'left') {
+        this.ctx.strokeStyle = '#ff3366';
+        this.ctx.lineWidth = 2;
+        this.ctx.lineCap = 'round';
+        
+        const tongueStartX = this.game.direction === 'right' 
+            ? head.x + headSize 
+            : head.x;
+        const tongueStartY = head.y + headSize * 0.5;
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(tongueStartX, tongueStartY);
+        
+        const tongueLength = headSize * 0.4;
+        const tongueEndX = this.game.direction === 'right'
+            ? tongueStartX + tongueLength
+            : tongueStartX - tongueLength;
+        
+        // Draw forked tongue
+        this.ctx.lineTo(tongueEndX, tongueStartY - headSize * 0.1);
+        this.ctx.moveTo(tongueStartX, tongueStartY);
+        this.ctx.lineTo(tongueEndX, tongueStartY + headSize * 0.1);
+        this.ctx.stroke();
+    }
+}
 
         generateFood() {
             if (this.food.active) {

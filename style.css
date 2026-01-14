@@ -214,3 +214,73 @@ html, body {
   color: #fac020;
   margin: 10px 0;
 }
+
+/* Snake Appearance Enhancements */
+.snake-eye {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(255,255,255,0.8);
+}
+
+.snake-tongue {
+    position: absolute;
+    width: 10px;
+    height: 2px;
+    background: #ff3366;
+    border-radius: 1px;
+}
+
+/* Active Power-ups Animation Enhancements */
+@keyframes snakeGlow {
+    0% { box-shadow: 0 0 10px rgba(255, 204, 0, 0.7); }
+    50% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.9); }
+    100% { box-shadow: 0 0 10px rgba(255, 204, 0, 0.7); }
+}
+
+@keyframes snakePulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+/* Smooth transitions for power-ups */
+.active-powerup {
+    transition: all 0.3s ease;
+}
+
+/* Enhanced canvas glow */
+canvas {
+    animation: canvasGlow 3s infinite alternate;
+}
+
+@keyframes canvasGlow {
+    from { box-shadow: 0 0 40px rgba(255, 118, 255, 0.3); }
+    to { box-shadow: 0 0 60px rgba(255, 118, 255, 0.5); }
+}
+
+/* Score animation */
+.score {
+    animation: scorePulse 2s infinite;
+}
+
+@keyframes scorePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* Power-up food glow */
+@keyframes powerupGlow {
+    0% { box-shadow: 0 0 15px currentColor; }
+    50% { box-shadow: 0 0 30px currentColor; }
+    100% { box-shadow: 0 0 15px currentColor; }
+}
+
+/* Segment connection effect */
+.snake-segment-connector {
+    position: absolute;
+    background: linear-gradient(90deg, rgba(255,204,0,0.5), rgba(255,153,0,0.5));
+    border-radius: 50%;
+}
