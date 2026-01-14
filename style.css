@@ -127,7 +127,7 @@ body::after {
 /* Start Screen with Forest Theme - FIXED SIZE */
 .app .start-screen {
   padding: 25px;
-  max-width: 500px;
+  max-width: 700px; /* Increased from 500px to accommodate side-by-side */
   width: 90%;
   min-height: auto;
   position: absolute;
@@ -200,15 +200,30 @@ body::after {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
 }
 
+/* Info Cards Container - SIDE BY SIDE LAYOUT */
+.info-cards-container {
+  display: flex;
+  gap: 15px;
+  margin: 15px 0;
+  width: 100%;
+}
+
+.info-card {
+  flex: 1;
+  min-width: 0; /* Prevents flex items from overflowing */
+}
+
 /* Power-up Guide with Forest Theme */
 .power-up-guide {
-  margin: 15px 0;
   padding: 15px;
   background: linear-gradient(145deg, rgba(42, 90, 42, 0.8), rgba(26, 58, 26, 0.8));
   border: 2px solid #8b4513;
   border-radius: 10px;
   text-align: left;
   box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 .power-up-guide h4 {
   margin: 0 0 10px 0;
@@ -239,12 +254,14 @@ body::after {
 
 /* Instructions with Forest Theme */
 .instructions {
-  margin: 15px 0;
   padding: 15px;
   background: linear-gradient(145deg, rgba(139, 69, 19, 0.2), rgba(107, 54, 15, 0.2));
   border: 2px solid #8b4513;
   border-radius: 10px;
   text-align: left;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 .instructions h4 {
   margin: 0 0 10px 0;
@@ -259,6 +276,93 @@ body::after {
   color: #e9eaee;
   padding-left: 10px;
   border-left: 3px solid #32cd32;
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+}
+
+/* Options Section */
+.options {
+  margin-bottom: 15px;
+  padding: 15px;
+  background: rgba(26, 58, 26, 0.7);
+  border-radius: 10px;
+  border: 2px solid #8b4513;
+}
+
+.options h3 {
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.end-score {
+  font-size: 1.2rem;
+  color: #ffd700;
+  margin: 10px 0;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  line-height: 1.6;
+}
+
+/* High Score Display */
+.high-score-display {
+  margin-bottom: 15px;
+  padding: 10px 15px;
+  background: linear-gradient(145deg, rgba(139, 69, 19, 0.8), rgba(107, 54, 15, 0.8));
+  border: 2px solid #ffd700;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+.high-score-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.high-score-label {
+  font-size: 11px;
+  color: #ffd700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+}
+
+.high-score-value {
+  font-size: 24px;
+  color: #ffffff;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* New High Score Animation */
+.new-high-score {
+  display: inline-block;
+  color: #ffd700;
+  font-size: 14px;
+  margin-top: 5px;
+  padding: 5px 10px;
+  background: rgba(139, 69, 19, 0.8);
+  border-radius: 5px;
+  border: 2px solid #ffd700;
+  animation: highScorePulse 1s infinite alternate;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+}
+
+@keyframes highScorePulse {
+  0% { transform: scale(1); box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+  100% { transform: scale(1.05); box-shadow: 0 0 20px rgba(255, 215, 0, 0.8); }
+}
+
+.high-score-info {
+  display: block;
+  font-size: 12px;
+  color: #90ee90;
+  margin-top: 5px;
+  font-weight: normal;
 }
 
 /* Active Power-ups Display */
@@ -343,12 +447,6 @@ canvas {
   opacity: 0.5;
   filter: sepia(0.5) blur(1px);
 }
-.end-score {
-  font-size: 1.2rem;
-  color: #ffd700;
-  margin: 10px 0;
-  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-}
 
 /* Score animation */
 @keyframes scorePulse {
@@ -389,6 +487,8 @@ canvas {
 }
 
 /* Responsive Design */
+
+/* Tablets and small desktops */
 @media (max-width: 1024px) {
   canvas {
     width: 700px;
@@ -396,11 +496,24 @@ canvas {
   }
 }
 
+/* Medium screens (tablets and smaller desktops) */
+@media (max-width: 900px) {
+  .app .start-screen {
+    max-width: 600px;
+    padding: 20px;
+  }
+  
+  .info-cards-container {
+    gap: 10px;
+  }
+}
+
+/* Mobile Landscape and Tablets */
 @media (max-width: 768px) {
   .app .start-screen {
     padding: 20px;
     width: 95%;
-    max-width: 450px;
+    max-width: 500px;
   }
   
   .app .start-screen h1 {
@@ -446,8 +559,31 @@ canvas {
     padding: 6px 10px;
     font-size: 10px;
   }
+  
+  /* Stack info cards vertically on mobile */
+  .info-cards-container {
+    flex-direction: column;
+  }
+  
+  .info-card {
+    width: 100%;
+  }
+  
+  .high-score-label {
+    font-size: 10px;
+  }
+  
+  .high-score-value {
+    font-size: 20px;
+  }
+  
+  .new-high-score {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
 }
 
+/* Small Mobile Devices */
 @media (max-width: 480px) {
   .app .start-screen h1 {
     font-size: 1.5rem;
@@ -480,8 +616,24 @@ canvas {
     width: 350px;
     height: 262px;
   }
+  
+  .info-cards-container {
+    gap: 8px;
+  }
+  
+  .power-up-guide,
+  .instructions {
+    padding: 12px;
+  }
+  
+  .power-up-guide h4,
+  .instructions h4 {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
 }
 
+/* Tall mobile devices */
 @media (max-height: 600px) {
   canvas {
     height: 80vh;
@@ -492,5 +644,36 @@ canvas {
   .app .start-screen {
     max-height: 90vh;
     overflow-y: auto;
+  }
+  
+  .info-cards-container {
+    flex-direction: column;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 350px) {
+  .app .start-screen {
+    padding: 15px;
+    max-width: 95%;
+  }
+  
+  .app .start-screen h1 {
+    font-size: 1.3rem;
+  }
+  
+  .app .start-screen .play-btn {
+    width: 160px;
+    font-size: 14px;
+    padding: 10px 15px;
+  }
+  
+  .guide-item, .instructions p {
+    font-size: 9px;
+  }
+  
+  .color-dot {
+    width: 12px;
+    height: 12px;
   }
 }

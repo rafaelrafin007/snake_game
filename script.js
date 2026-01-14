@@ -57,6 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
+            // Load high score from localStorage
+            this.highScore = localStorage.getItem('snakeHighScore') || 0;
+            
             this.game = {
                 speed: 100,
                 originalSpeed: 100,
@@ -84,7 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 powerUpFoodTimer: 0, // Timer for power-up food expiration
                 specialFoodInterval: 25000, // Reduced from 60000 to 25000 (25 seconds)
                 specialFoodDuration: 15000, // Stays for 15 seconds
-                firstSpecialDelay: 5000 // First special food appears after 5 seconds
+                firstSpecialDelay: 5000, // First special food appears after 5 seconds
+                newHighScore: false // Flag for new high score
             };
 
             this.setUpGame();
@@ -152,6 +156,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Handle window resize
             window.addEventListener('resize', this.handleResize);
+            
+            // Update high score display on start screen
+            this.updateHighScoreDisplay();
         }
 
         handleResize() {
@@ -180,6 +187,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.$startScreen.querySelectorAll('.options button').forEach(btn => btn.classList.remove('active'));
                 event.target.classList.add('active');
             }
+        }
+
+        updateHighScoreDisplay() {
+            // Create or update high score display in start screen
+            let $highScoreDisplay = this.$startScreen.querySelector('.high-score-display');
+            
+            if (!$highScoreDisplay) {
+                $highScoreDisplay = document.createElement('div');
+                $highScoreDisplay.className = 'high-score-display';
+                this.$startScreen.querySelector('.options').insertBefore($highScoreDisplay, this.$startScreen.querySelector('.options h3'));
+            }
+            
+            $highScoreDisplay.innerHTML = `
+                <div class="high-score-container">
+                    <div class="high-score-label">🏆 HIGH SCORE</div>
+                    <div class="high-score-value">${this.highScore}</div>
+                </div>
+            `;
         }
 
         setUpGame() {
@@ -230,6 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.game.snakeColor = '#fac020'; // Reset to default
             this.game.lastPowerUpTime = 0;
             this.game.powerUpFoodTimer = 0;
+            this.game.newHighScore = false;
             
             this.$activePowerups.innerHTML = '';
             this.resetCanvas();
@@ -248,6 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.$app.classList.remove('game-over');
             this.$score.innerText = 0;
             this.game.isPaused = false;
+            this.game.newHighScore = false;
 
             // Clear any existing interval
             if (this.gameLoop) {
@@ -477,6 +504,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Change snake color to regular food color
                 this.game.snakeColor = this.food.color;
                 
+                // Check for high score during gameplay
+                if (this.game.score > this.highScore && !this.game.newHighScore) {
+                    this.game.newHighScore = true;
+                    this.flashHighScore();
+                }
+                
                 this.generateFood();
             } else if (ateSpecialFood) {
                 this.specialFood.active = false;
@@ -489,6 +522,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Change snake color to special food color
                 this.game.snakeColor = this.specialFood.color;
                 
+                // Check for high score during gameplay
+                if (this.game.score > this.highScore && !this.game.newHighScore) {
+                    this.game.newHighScore = true;
+                    this.flashHighScore();
+                }
+                
                 this.applyPowerUp(this.specialFood.type);
                 this.playSound('powerUp');
             } else {
@@ -500,6 +539,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             this.game.direction = this.game.nextDirection;
+        }
+
+        // Flash effect when new high score is achieved
+        flashHighScore() {
+            const $score = this.$score;
+            let flashCount = 0;
+            const maxFlashes = 6;
+            
+            const flashInterval = setInterval(() => {
+                if (flashCount >= maxFlashes) {
+                    clearInterval(flashInterval);
+                    $score.style.backgroundColor = 'rgba(42, 90, 42, 0.9)';
+                    $score.style.color = '#ffd700';
+                    return;
+                }
+                
+                if (flashCount % 2 === 0) {
+                    $score.style.backgroundColor = '#ffd700';
+                    $score.style.color = '#1a3a1a';
+                } else {
+                    $score.style.backgroundColor = 'rgba(42, 90, 42, 0.9)';
+                    $score.style.color = '#ffd700';
+                }
+                
+                flashCount++;
+            }, 200);
         }
 
         // DRAGON-STYLE SNAKE DRAWING
@@ -1196,6 +1261,13 @@ document.addEventListener('DOMContentLoaded', () => {
             clearInterval(this.powerUpFoodInterval);
             cancelAnimationFrame(this.gameLoop);
             
+            // Check and update high score
+            if (this.game.score > this.highScore) {
+                this.highScore = this.game.score;
+                localStorage.setItem('snakeHighScore', this.highScore);
+                this.game.newHighScore = true;
+            }
+            
             // Remove keydown event listener
             document.removeEventListener('keydown', this.handleKeyDown);
 
@@ -1206,7 +1278,19 @@ document.addEventListener('DOMContentLoaded', () => {
             this.removePauseOverlay();
 
             this.$startScreen.querySelector('.options h3').innerText = 'Game Over';
-            this.$startScreen.querySelector('.options .end-score').innerText = `Final Score: ${this.game.score}`;
+            
+            // Show high score message
+            let endScoreText = `Final Score: ${this.game.score}`;
+            if (this.game.newHighScore) {
+                endScoreText += `<br><span class="new-high-score">🏆 NEW HIGH SCORE! 🏆</span>`;
+            } else {
+                endScoreText += `<br><span class="high-score-info">High Score: ${this.highScore}</span>`;
+            }
+            
+            this.$startScreen.querySelector('.options .end-score').innerHTML = endScoreText;
+            
+            // Update high score display
+            this.updateHighScoreDisplay();
             
             // Make start screen visible
             this.$startScreen.style.display = 'block';
