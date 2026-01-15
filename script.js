@@ -96,50 +96,64 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         updateCanvasSize() {
-            const isMobile = window.innerWidth < 768;
-            const isSmallMobile = window.innerWidth < 480;
-            
-            if (isSmallMobile) {
-                this.settings = {
-                    canvas: {
-                        width: 350,
-                        height: 262,
-                        background: '#1a3a1a'
-                    },
-                    snake: {
-                        size: 14,
-                        background: '#fac020'
-                    }
-                };
-            } else if (isMobile) {
-                this.settings = {
-                    canvas: {
-                        width: 600,
-                        height: 450,
-                        background: '#1a3a1a'
-                    },
-                    snake: {
-                        size: 20,
-                        background: '#fac020'
-                    }
-                };
-            } else {
-                this.settings = {
-                    canvas: {
-                        width: 800,
-                        height: 600,
-                        background: '#1a3a1a'
-                    },
-                    snake: {
-                        size: 20,
-                        background: '#fac020'
-                    }
-                };
+    const isMobile = window.innerWidth < 768;
+    const isSmallMobile = window.innerWidth < 480;
+    const isLargeScreen = window.innerWidth >= 1200;
+    
+    if (isSmallMobile) {
+        this.settings = {
+            canvas: {
+                width: 400,    // Increased from 350
+                height: 320,   // Increased from 262
+                background: '#1a3a1a'
+            },
+            snake: {
+                size: 16,
+                background: '#fac020'
             }
-            
-            this.$canvas.width = this.settings.canvas.width;
-            this.$canvas.height = this.settings.canvas.height;
-        }
+        };
+    } else if (isMobile) {
+        this.settings = {
+            canvas: {
+                width: 700,    // Increased from 600
+                height: 525,   // Increased from 450
+                background: '#1a3a1a'
+            },
+            snake: {
+                size: 20,
+                background: '#fac020'
+            }
+        };
+    } else if (isLargeScreen) {
+        // Extra large for big screens
+        this.settings = {
+            canvas: {
+                width: 1000,   // New size for large screens
+                height: 750,   // New size for large screens
+                background: '#1a3a1a'
+            },
+            snake: {
+                size: 25,
+                background: '#fac020'
+            }
+        };
+    } else {
+        this.settings = {
+            canvas: {
+                width: 900,    // Increased from 800
+                height: 675,   // Increased from 600
+                background: '#1a3a1a'
+            },
+            snake: {
+                size: 25,      // Slightly larger snake
+                background: '#fac020'
+            }
+        };
+    }
+    
+    this.$canvas.width = this.settings.canvas.width;
+    this.$canvas.height = this.settings.canvas.height;
+}
 
         init() {
             // Choose difficulty
